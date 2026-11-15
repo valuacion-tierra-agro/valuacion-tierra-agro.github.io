@@ -1,5 +1,6 @@
 // Cálculo de «Simulá tu campaña» (sección 1 de la página). Funciones puras, sin DOM.
 // Usa los datos de TESIS_DATOS y las funciones de TESIS_MOTOR. Las fórmulas son las del PLAN-v2:
+// La cobertura es por cultivo: cada cultivo tiene su proporción h (un h único vale para todos).
 //   MB = Ȳ·(P − GC) − CD − CC − COM         (por hectárea; total = hectáreas × MB)
 //   P(h) = h·(F27 + base) + (1 − h)·spot proyectado
 //   COM = comisión × Ȳ × F27 × h
@@ -186,6 +187,24 @@
     return { v: caso.v, campana: caso.campana, origen: m.origen(caso, "v", datos) };
   }
 
+  // Rango del rinde REAL (qq/ha) que hubo en la zona para un cultivo en las últimas campañas (hasta 6) de TESIS_DATOS, o null si los datos
+  // no traen rinde real de esa zona y cultivo (no se inventa nada). Sale de la columna «rindeReal» de cada caso.
+  function rindeHistorico(datos, cultivo, zona) {
+    datos = datosDe(datos);
+    var m = motor();
+    if (m.cultivosDe(datos, zona).indexOf(cultivo) < 0) return null;
+    var casos = casosOrdenados(datos, cultivo, zona).filter(function (c) { return esFinito(c.rindeReal) && c.rindeReal > 0; }).slice(-6);
+    if (!casos.length) return null;
+    var menor = casos[0], mayor = casos[0];
+    casos.forEach(function (c) {
+      if (c.rindeReal < menor.rindeReal) menor = c;
+      if (c.rindeReal > mayor.rindeReal) mayor = c;
+    });
+    return { cultivo: cultivo, zona: zona, campanas: casos.length, desde: casos[0].campana, hasta: casos[casos.length - 1].campana,
+      min: menor.rindeReal, max: mayor.rindeReal,
+      origenMin: m.origen(menor, "rindeReal", datos), origenMax: m.origen(mayor, "rindeReal", datos) };
+  }
+
   function comisionPorDefecto(datos) {
     datos = datosDe(datos);
     return { valor: datos.parametros.comision.v, origen: datos.parametros.comision.o };
@@ -232,17 +251,36 @@
   // Validación y cálculo
   // ---------------------------------------------------------------------------------------
 
-  // Entrada ya numérica: { zona, h, comision, v, cultivos: { Soja: { ha, rinde, cd, cc (null = de la tabla), gc, f27 } } }.
+  // La proporción cubierta es un número (vale para todos los cultivos) o un objeto { cultivo: h } con la de cada uno.
+  // Un cultivo que falta en el objeto se toma como no cubierto (0).
+  function hPorCultivo(h, nombres) {
+    var salida = {};
+    nombres.forEach(function (c) { salida[c] = typeof h === "number" ? h : (h && h[c] !== undefined ? h[c] : 0); });
+    return salida;
+  }
+
+  function revisarH(h, nombres) {
+    var texto = "La proporción cubierta tiene que ser 0, 25, 50, 75 o 100 %.";
+    if (typeof h === "number") {
+      if (PROPORCIONES.indexOf(h) < 0) throw new Error(texto);
+      return;
+    }
+    if (h === null || typeof h !== "object") throw new Error(texto);
+    var porCultivo = hPorCultivo(h, nombres);
+    nombres.forEach(function (c) { if (PROPORCIONES.indexOf(porCultivo[c]) < 0) throw new Error(c + ": " + texto); });
+  }
+
+  // Entrada ya numérica: { zona, h (número, o { cultivo: h }), comision, v, cultivos: { Soja: { ha, rinde, cd, cc (null = de la tabla), gc, f27 } } }.
   // Lanza un Error en español que nombra el campo; nunca devuelve NaN.
   function validar(datos, entrada) {
     datos = datosDe(datos);
     if (entrada === null || typeof entrada !== "object") throw new Error("Falta la entrada de la campaña.");
     if (zonas(datos).indexOf(entrada.zona) < 0) throw new Error("La zona «" + entrada.zona + "» no está en la tesis.");
-    if (PROPORCIONES.indexOf(entrada.h) < 0) throw new Error("La proporción cubierta tiene que ser 0, 25, 50, 75 o 100 %.");
     var msg = revisarLimite("comision", entrada.comision) || revisarLimite("v", entrada.v);
     if (msg) throw new Error(msg);
     var claves = Object.keys(entrada.cultivos || {});
     if (!claves.length) throw new Error("Elegí al menos un cultivo.");
+    revisarH(entrada.h, claves);
     var haTotal = 0;
     claves.forEach(function (cultivo) {
       if (cultivosDeZona(datos, entrada.zona).indexOf(cultivo) < 0) throw new Error("La tesis no tiene " + cultivo + " en la zona «" + entrada.zona + "».");
@@ -280,12 +318,59 @@
     return { mb: c.rinde * (precio - c.gc) - c.cd - c.cc - com, ingreso: c.rinde * precio, comision: com };
   }
 
+  // Resultado de una cobertura con la proporción h de cada cultivo (h: número para todos, u objeto { cultivo: h }), sobre un resultado de
+  // calcular() (usa sólo lo que éste guarda: cultivos, comisión, campañas, hectáreas y valor de la tierra). Devuelve
+  //   hPorCultivo: { cultivo: h }; h: la proporción de toda la campaña (ponderada por toneladas esperadas; igual a h si es la misma para todos);
+  //   resultado: { mbTotal, mbHa, ingresoTotal, ingresoHa, comisionTotal, r, porCultivo: { h, precio, mbHa, ingresoHa, comisionHa } }
+  //   escenario: { r: [6], mbHa: [6], estadisticasR, estadisticasMbHa }
+  function evaluar(vista, h) {
+    var nombres = vista.nombres;
+    revisarH(h, nombres);
+    var hp = hPorCultivo(h, nombres);
+    var haTotal = vista.hectareasTotales, valorTotal = vista.valorTotal;
+    var mbTotal = 0, ingTotal = 0, comTotal = 0, producido = 0, cubierto = 0;
+    var porCultivo = {};
+    nombres.forEach(function (cultivo) {
+      var i = vista.cultivos[cultivo];
+      var precio = hp[cultivo] * (i.f27 + i.precios.base) + (1 - hp[cultivo]) * i.precios.spotProyectado;
+      var cuenta = margenPorHa(i, precio, hp[cultivo], vista.comision);
+      porCultivo[cultivo] = { h: hp[cultivo], precio: precio, mbHa: cuenta.mb, ingresoHa: cuenta.ingreso, comisionHa: cuenta.comision };
+      mbTotal += i.ha * cuenta.mb;
+      ingTotal += i.ha * cuenta.ingreso;
+      comTotal += i.ha * cuenta.comision;
+      producido += i.ha * i.rinde;
+      cubierto += i.ha * i.rinde * hp[cultivo];
+    });
+    var hTotal = typeof h === "number" ? h : cubierto / producido;
+    var resultado = { h: hTotal, mbTotal: mbTotal, mbHa: mbTotal / haTotal, ingresoTotal: ingTotal, ingresoHa: ingTotal / haTotal,
+      comisionTotal: comTotal, r: mbTotal / valorTotal, porCultivo: porCultivo };
+
+    // Seis escenarios históricos: las sorpresas de precio de cada campaña de la tesis aplicadas al F27.
+    var r = [], mbHa = [];
+    vista.campanas.forEach(function (campana, t) {
+      var mb = 0;
+      nombres.forEach(function (cultivo) {
+        var i = vista.cultivos[cultivo];
+        var caso = i.casos[t];
+        var sin = i.f27 * caso.sc / caso.fs;
+        var cub = i.f27 * (1 + (caso.sc - caso.fc) / caso.fs);
+        var precio = hp[cultivo] * cub + (1 - hp[cultivo]) * sin;
+        mb += i.ha * margenPorHa(i, precio, hp[cultivo], vista.comision).mb;
+      });
+      r.push(mb / valorTotal);
+      mbHa.push(mb / haTotal);
+    });
+    return { hPorCultivo: hp, h: hTotal, resultado: resultado,
+      escenario: { h: hTotal, r: r, mbHa: mbHa, estadisticasR: estadisticas(r), estadisticasMbHa: estadisticas(mbHa) } };
+  }
+
   // Resultado completo. Devuelve:
-  //   cultivos[cultivo]: { ha, proporcion, base, spotProyectado, crecimientoAnual, precios (para cada h), mbHa (para cada h) }
-  //   resultados[h] (h = 0, 0.25, …): { mbTotal, mbHa, ingresoTotal, ingresoHa, comisionTotal, r }
-  //   usuario: el resultado con la h elegida; futuro: h = 1; spot: h = 0
-  //   escenarios[h]: { r: [6], mbHa: [6], estadisticas de R y de MB/ha }; campanas: las 6
-  //   lectura: diferencia de cubrirse al 100 % contra no cubrirse
+  //   cultivos[cultivo]: { ha, proporcion, rinde, cd, cc, gc, f27, precios, casos }
+  //   resultados[h] (h = 0, 0.25, …, la misma para todos los cultivos): { mbTotal, mbHa, ingresoTotal, ingresoHa, comisionTotal, r, porCultivo }
+  //   usuario: el resultado con la cobertura elegida (entrada.h: un número, o una proporción por cultivo); futuro: h = 1; spot: h = 0
+  //   hPorCultivo: la proporción de cada cultivo; h: la de toda la campaña (si no es la misma para todos, la ponderada por toneladas)
+  //   escenarios[h]: { r: [6], mbHa: [6], estadísticas de R y de MB/ha } (misma h para todos); escenarioUsuario: el de la cobertura elegida
+  //   campanas: las 6; lectura: diferencia de cubrirse al 100 % contra no cubrirse
   function calcular(datos, entrada) {
     datos = datosDe(datos);
     validar(datos, entrada);
@@ -305,45 +390,16 @@
         precios: p, casos: casosOrdenados(datos, cultivo, entrada.zona) };
     });
 
-    function precioH(i, h) { return h * (i.f27 + i.precios.base) + (1 - h) * i.precios.spotProyectado; }
+    var vista = { zona: entrada.zona, hectareasTotales: haTotal, valorTotal: valorTotal, v: entrada.v, comision: entrada.comision,
+      cultivos: info, nombres: nombres, campanas: info[nombres[0]].precios.campanas };
 
-    var resultados = {};
+    var resultados = {}, escenarios = {};
     PROPORCIONES.forEach(function (h) {
-      var mbTotal = 0, ingTotal = 0, comTotal = 0;
-      var porCultivo = {};
-      nombres.forEach(function (cultivo) {
-        var i = info[cultivo];
-        var precio = precioH(i, h);
-        var cuenta = margenPorHa(i, precio, h, entrada.comision);
-        porCultivo[cultivo] = { precio: precio, mbHa: cuenta.mb, ingresoHa: cuenta.ingreso, comisionHa: cuenta.comision };
-        mbTotal += i.ha * cuenta.mb;
-        ingTotal += i.ha * cuenta.ingreso;
-        comTotal += i.ha * cuenta.comision;
-      });
-      resultados[h] = { h: h, mbTotal: mbTotal, mbHa: mbTotal / haTotal, ingresoTotal: ingTotal, ingresoHa: ingTotal / haTotal,
-        comisionTotal: comTotal, r: mbTotal / valorTotal, porCultivo: porCultivo };
+      var ev = evaluar(vista, h);
+      resultados[h] = ev.resultado;
+      escenarios[h] = ev.escenario;
     });
-
-    // Seis escenarios históricos: las sorpresas de precio de cada campaña de la tesis aplicadas al F27.
-    var campanas = info[nombres[0]].precios.campanas;
-    var escenarios = {};
-    PROPORCIONES.forEach(function (h) {
-      var r = [], mbHa = [];
-      campanas.forEach(function (campana, t) {
-        var mbTotal = 0;
-        nombres.forEach(function (cultivo) {
-          var i = info[cultivo];
-          var caso = i.casos[t];
-          var sin = i.f27 * caso.sc / caso.fs;
-          var cub = i.f27 * (1 + (caso.sc - caso.fc) / caso.fs);
-          var precio = h * cub + (1 - h) * sin;
-          mbTotal += i.ha * margenPorHa(i, precio, h, entrada.comision).mb;
-        });
-        r.push(mbTotal / valorTotal);
-        mbHa.push(mbTotal / haTotal);
-      });
-      escenarios[h] = { h: h, r: r, mbHa: mbHa, estadisticasR: estadisticas(r), estadisticasMbHa: estadisticas(mbHa) };
-    });
+    var elegida = evaluar(vista, entrada.h);
 
     var e0 = escenarios[0], e1 = escenarios[1];
     var lectura = {
@@ -359,31 +415,35 @@
       peorR100: e1.estadisticasR.peor
     };
 
-    return {
-      zona: entrada.zona, h: entrada.h, hectareasTotales: haTotal, valorTotal: valorTotal, v: entrada.v, comision: entrada.comision,
-      cultivos: info, nombres: nombres, resultados: resultados,
-      usuario: resultados[entrada.h], futuro: resultados[1], spot: resultados[0],
-      campanas: campanas, escenarios: escenarios, lectura: lectura
-    };
+    return Object.assign(vista, {
+      h: elegida.h, hPorCultivo: elegida.hPorCultivo, resultados: resultados,
+      usuario: elegida.resultado, escenarioUsuario: elegida.escenario, futuro: resultados[1], spot: resultados[0],
+      escenarios: escenarios, lectura: lectura
+    });
   }
 
-  // Qué implica cubrir la proporción h de la cosecha, con un resultado de calcular(): toneladas cubiertas (ha × rinde × h) por cultivo y en
-  // total, comisión estimada en USD (comisión × toneladas cubiertas × F27) y las cifras de esperado y de riesgo con esa h.
+  // Qué implica cubrir la proporción h (un número para todos los cultivos, u objeto { cultivo: h }) con un resultado de calcular():
+  // toneladas cubiertas (ha × rinde × h) por cultivo y en total, comisión estimada en USD (comisión × toneladas cubiertas × F27) y las
+  // cifras de esperado y de riesgo de la campaña entera. `porCultivo` trae, de cada cultivo, su h, toneladas, comisión y margen esperado.
   // No calcula cantidad de contratos: el tamaño del contrato no está en las fuentes del repositorio.
   function cobertura(vista, h) {
-    if (PROPORCIONES.indexOf(h) < 0) throw new Error("La proporción cubierta tiene que ser 0, 25, 50, 75 o 100 %.");
-    var toneladas = {}, producidas = {}, cubierto = 0, producido = 0, comision = 0;
+    var ev = evaluar(vista, h);
+    var toneladas = {}, producidas = {}, cubierto = 0, producido = 0, comision = 0, porCultivo = {};
     vista.nombres.forEach(function (c) {
       var i = vista.cultivos[c];
+      var hc = ev.hPorCultivo[c];
       producidas[c] = i.ha * i.rinde;
-      toneladas[c] = producidas[c] * h;
+      toneladas[c] = producidas[c] * hc;
       producido += producidas[c];
       cubierto += toneladas[c];
-      comision += toneladas[c] * i.f27 * vista.comision;
+      var com = toneladas[c] * i.f27 * vista.comision;
+      comision += com;
+      porCultivo[c] = { h: hc, toneladas: toneladas[c], producidas: producidas[c], comisionUsd: com,
+        mbTotal: i.ha * ev.resultado.porCultivo[c].mbHa, precio: ev.resultado.porCultivo[c].precio };
     });
-    var e = vista.escenarios[h];
-    return { h: h, toneladas: toneladas, producidas: producidas, toneladasCubiertas: cubierto, toneladasProducidas: producido,
-      comisionUsd: comision, mbTotal: vista.resultados[h].mbTotal, r: vista.resultados[h].r,
+    var e = ev.escenario;
+    return { h: ev.h, hPorCultivo: ev.hPorCultivo, toneladas: toneladas, producidas: producidas, toneladasCubiertas: cubierto, toneladasProducidas: producido,
+      comisionUsd: comision, mbTotal: ev.resultado.mbTotal, r: ev.resultado.r, porCultivo: porCultivo,
       desvio: e.estadisticasR.desvio, peor: e.estadisticasR.peor, sharpe: e.estadisticasR.sharpe,
       peorMbTotal: e.estadisticasMbHa.peor * vista.hectareasTotales, mediaMbTotal: e.estadisticasMbHa.media * vista.hectareasTotales };
   }
@@ -454,6 +514,8 @@
     DETALLE_ZONAS: DETALLE_ZONAS,
     detalleDeZona: detalleDeZona,
     cobertura: cobertura,
+    evaluar: evaluar,
+    hPorCultivo: hPorCultivo,
     ROTULO_REFERENCIA: ROTULO_REFERENCIA,
     LIMITES: LIMITES,
     leerDecimal: leerDecimal,
@@ -463,6 +525,7 @@
     futuro2627: futuro2627,
     porDefecto: porDefecto,
     valorTierraDe: valorTierraDe,
+    rindeHistorico: rindeHistorico,
     comisionPorDefecto: comisionPorDefecto,
     validar: validar,
     calcular: calcular,
