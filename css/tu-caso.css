@@ -1,4 +1,4 @@
-/* «Lo que pasó» › «Tu caso»: encabezado con números grandes, gráfico, relato, explicación por campaña y tarjetas de estrategias (Carbon oscuro). */
+/* «Histórico» › «Tu caso»: encabezado con números grandes, gráfico, relato, explicación por campaña y tarjetas de estrategias (Carbon oscuro). */
 .tc { display: grid; gap: 2rem; }
 .tc-bloque { display: grid; gap: 0.9rem; align-content: start; }
 .tc-bloque h4, .tc-estrategia h4 { margin: 0; font-size: 1.25rem; font-weight: 400; color: var(--color-texto); }

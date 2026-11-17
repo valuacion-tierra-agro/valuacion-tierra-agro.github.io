@@ -20,7 +20,8 @@
   // Barra de navegación (PLAN-v2): las secciones que traen `grupo` comparten una sola pestaña de la barra superior
   // y se reparten en subpestañas (nav#subnavegacion). La URL (#id) sigue siendo la de cada sección.
   var GRUPOS = {
-    historico: { titulo: "Lo que pasó (2020–2026)", rotulo: "Lo que pasó", icono: "clock" }
+    historico: { titulo: "Histórico (2020–2026)", rotulo: "Histórico", icono: "clock",
+      intro: "Lo que habría pasado con tu campo en las campañas 2020/21 a 2025/26." }
   };
   // Estructura de la fase 4: antes de cargar los datos sólo se ve el asistente de «Simulá tu campaña» (y un link a «Datos y fuentes»);
   // después aparece la barra con las 4 pestañas. Las secciones con `sinDatos` se pueden abrir sin haber cargado datos.
@@ -315,6 +316,14 @@
     return texto.trim() === "" ? [] : texto.split(" · ").map(leerGrupo);
   }
 
+  // Frase en simple para la ventanita de un número (sin archivos ni celdas). Si el origen es un dato suelto («archivo › hoja › celda»)
+  // dice que es un dato de referencia; si es un cálculo, usa la frase general que le pasa cada pestaña. El origen técnico queda en data-origen.
+  function explicarOrigen(origen, general) {
+    if (typeof origen !== "string" || origen === "") return null;
+    if (origen.indexOf(PARTE_DE) < 0 && origen.indexOf(" › ") >= 0) return "Es un dato de referencia que usa el simulador.";
+    return general || "Lo calculamos con los datos de referencia que usa el simulador.";
+  }
+
   // Parte un texto de origen en sus piezas (es la inversa de origenCalculado / unirOrigenes):
   //   «archivo › hoja › celda»                       → un grupo con su celda;
   //   «fórmula — parte de: G1 · G2 — en el Excel: G3» → fórmula, grupos de partida y celdas del Excel
@@ -485,6 +494,11 @@
     if (!panelOrigen || !nodo || !datosLista) return;
     var items = (datosLista.items || []).map(function (item) {
       var visto = typeof item.texto === "string" ? item.texto : formato.aplicar(item.formato, item.v);
+      // item.explica: frase en simple (sin archivos ni celdas); con ella la lista no muestra el valor exacto ni el origen técnico.
+      if (typeof item.explica === "string" && item.explica !== "") {
+        return el("li", { "class": "origen-item" }, [el("p", { "class": "origen-valor" }, item.etiqueta + ": " + visto),
+          el("p", { "class": "origen-simple" }, item.explica)]);
+      }
       var exacto = textoValorExacto(typeof item.v === "number" && isFinite(item.v) ? String(item.v) : null);
       return el("li", { "class": "origen-item" }, [
         el("p", { "class": "origen-valor" }, item.etiqueta + ": " + visto + (exacto ? " · " + exacto : ""))
@@ -1038,7 +1052,7 @@
   // Secciones y arranque (D-03).
   // ---------------------------------------------------------------------------------------
 
-  // Secciones que ya no se muestran en el menú de «Lo que pasó» (su código sigue en el repo): no se registran.
+  // Secciones que ya no se muestran en el menú de «Histórico» (su código sigue en el repo): no se registran.
   app.seccionesFueraDelMenu = ["escenario", "rentabilidad"];
 
   function registrarSeccion(seccion) {
@@ -1152,6 +1166,8 @@
     seccion.nodoError = el("p", { "class": "mensaje", role: "alert" });
     seccion.nodoError.hidden = true;
     seccion.nodoSeccion.appendChild(seccion.nodoError);
+    // La línea de presentación del grupo va después del aviso de error (el aviso sigue siendo el segundo nodo de la sección).
+    if (grupo && grupo.intro) seccion.nodoSeccion.appendChild(el("p", { "class": "grupo-intro" }, grupo.intro));
     doc.getElementById("contenido").appendChild(seccion.nodoSeccion);
     try {
       seccion.montar(seccion.nodoSeccion);
@@ -1336,6 +1352,7 @@
   app.numero = numero;
   app.unirOrigenes = unirOrigenes;
   app.origenCalculado = origenCalculado;
+  app.explicarOrigen = explicarOrigen;
   app.el = el;
   app.vaciar = vaciar;
   app.encabezadoDeGrafico = encabezadoDeGrafico;

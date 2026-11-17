@@ -52,14 +52,14 @@
 
   // Glosario (D-16): término y explicación, en el orden en que se muestran.
   var TERMINOS = [
-    ["Fs", "precio del futuro al momento de sembrar (USD por tonelada)."],
-    ["Sc", "precio disponible (spot) a cosecha (USD por tonelada)."],
-    ["Fc", "precio del mismo futuro a cosecha, cuando se cierra la cobertura (USD por tonelada)."],
-    ["GC", "gastos de comercialización (USD por tonelada)."],
-    ["V", "valor de la tierra (USD por hectárea); la rentabilidad es el margen dividido por V."],
+    ["Precio del futuro al sembrar", "lo que pagaba el contrato a futuro cuando sembraste (USD por tonelada)."],
+    ["Precio a cosecha", "el precio disponible el día de la cosecha (USD por tonelada)."],
+    ["Precio del futuro a cosecha", "lo que pagaba ese mismo contrato a la cosecha, cuando se cierra la cobertura (USD por tonelada)."],
+    ["Gastos de comercialización", "lo que cuesta vender y mover la mercadería (USD por tonelada)."],
+    ["Valor de la tierra", "lo que vale una hectárea (USD por hectárea); la rentabilidad es el margen dividido por ese valor."],
     ["Margen proyectado", "lo que esperabas ganar al sembrar, con el rinde esperado y el precio del futuro."],
-    ["Sorpresa", "la diferencia entre el margen real y el proyectado."],
-    ["Riesgo", "el desvío estándar de la sorpresa entre campañas: cuánto se alejó, en general, lo real de lo proyectado."]
+    ["Diferencia con lo proyectado", "lo que ganaste de más o de menos frente a lo proyectado."],
+    ["Riesgo", "cuánto se alejó, en general, lo que ganaste de lo que esperabas, de una campaña a otra."]
   ];
 
   var MENSAJE_SIN_HECTAREAS = "Cargá hectáreas en al menos un cultivo para ver los resultados.";
@@ -208,17 +208,17 @@
     { clave: "hectareas", concepto: "Hectáreas", celda: function (c) { return celdaNumero(c.ha, "entero", "Lo cargaste vos"); } },
     { clave: "rindeEsperado", concepto: "Rinde esperado (qq/ha)", celda: function (c) { return celdaNumero(c.caso.rindeEsperado, "rinde", c.o("rindeEsperado")); } },
     { clave: "rindeReal", concepto: "Rinde real (qq/ha)", celda: function (c) { return celdaNumero(c.caso.rindeReal, "rinde", c.o("rindeReal")); } },
-    { clave: "desvioRinde", concepto: "Desvío del rinde", celda: function (c, d) {
+    { clave: "desvioRinde", concepto: "Cuánto se alejó el rinde", celda: function (c, d) {
       return celdaNumero(c.r.desvioRinde, "porcentaje", d.calculado(FORMULAS.desvioRindeCultivo, c.partes(["rindeEsperado", "rindeReal"]), [c.o("excel.desvioRinde")]));
     } },
     { clave: "contrato", concepto: "Contrato (siembra → cosecha)", celda: function (c, d) {
       var p = c.precio;
       return celdaTexto(p.contrato.v + " (" + p.mesSiembra.v + " → " + p.mesCosecha.v + ")", d.unir([p.contrato.o, p.mesSiembra.o, p.mesCosecha.o]));
     } },
-    { clave: "fs", concepto: "Fs: futuro al sembrar (USD/t)", celda: function (c) { return celdaNumero(c.caso.fs, "usd2", c.o("fs")); } },
-    { clave: "sc", concepto: "Sc: disponible a cosecha (USD/t)", celda: function (c) { return celdaNumero(c.caso.sc, "usd2", c.o("sc")); } },
-    { clave: "fc", concepto: "Fc: futuro a cosecha (USD/t)", celda: function (c) { return celdaNumero(c.caso.fc, "usd2", c.o("fc")); } },
-    { clave: "gc", concepto: "GC: gastos de comercialización (USD/t)", celda: function (c) { return celdaNumero(c.caso.gc, "usd2", c.o("gc")); } },
+    { clave: "fs", concepto: "Precio del futuro al sembrar (USD/t)", celda: function (c) { return celdaNumero(c.caso.fs, "usd2", c.o("fs")); } },
+    { clave: "sc", concepto: "Precio a cosecha (USD/t)", celda: function (c) { return celdaNumero(c.caso.sc, "usd2", c.o("sc")); } },
+    { clave: "fc", concepto: "Precio del futuro a cosecha (USD/t)", celda: function (c) { return celdaNumero(c.caso.fc, "usd2", c.o("fc")); } },
+    { clave: "gc", concepto: "Gastos de comercialización (USD/t)", celda: function (c) { return celdaNumero(c.caso.gc, "usd2", c.o("gc")); } },
     { clave: "cd", concepto: "Costos directos (USD/ha)", celda: function (c) { return celdaNumero(c.caso.cd, "usd2", c.o("cd")); } },
     { clave: "cosechaEsperado", concepto: "Cosecha al rinde esperado (USD/ha)", celda: function (c, d) {
       return celdaNumero(c.r.cosechaEsperado, "usd2", d.calculado(FORMULAS.cosecha, c.partes(["rindeEsperado"].concat(CAMPOS_TABLA)), [c.o("excel.cosechaEsperado")]));
@@ -226,7 +226,7 @@
     { clave: "cosechaReal", concepto: "Cosecha al rinde real (USD/ha)", celda: function (c, d) {
       return celdaNumero(c.r.cosechaReal, "usd2", d.calculado(FORMULAS.cosecha, c.partes(["rindeReal"].concat(CAMPOS_TABLA)), [c.o("excel.cosechaReal")]));
     } },
-    { clave: "v", concepto: "V: valor de la tierra (USD/ha)", celda: function (c) { return celdaNumero(c.caso.v, "usd2", c.o("v")); } },
+    { clave: "v", concepto: "Valor de la tierra (USD/ha)", celda: function (c) { return celdaNumero(c.caso.v, "usd2", c.o("v")); } },
     { clave: "mbProyectado", concepto: "Margen proyectado (USD/ha)", celda: function (c, d) {
       return celdaNumero(c.r.mbProyectado, "usd2", d.calculado(FORMULAS.mbProyectado, c.partes(["rindeEsperado", "fs", "gc", "cd"].concat(CAMPOS_TABLA)), [c.o("excel.mbProyectado")]));
     } },
@@ -511,10 +511,43 @@
 
   function base() { return raiz.TESIS_APP; }
 
+  // Frase en simple para la ventanita «De dónde sale este número» (el archivo y la celda siguen en data-origen y en «Datos y fuentes»).
+  var EXPLICA_GENERAL = "Lo calculamos con tus hectáreas y con los precios, rindes y costos de tu zona.";
+  var EXPLICAS = [
+    [/^Margen proyectado al sembrar/, "Lo que esperabas ganar al sembrar, con el rinde esperado y el precio del futuro, menos los costos."],
+    [/^Margen real sin cobertura/, "Lo que ganaste vendiendo a cosecha, con el rinde que se obtuvo, menos los costos."],
+    [/^Margen real con cobertura/, "Lo que ganaste vendiendo a cosecha, más lo que dejó (o costó) el futuro, menos los costos."],
+    [/^Promedio de las \d+ campañas de \(margen real con cobertura/, "En promedio por campaña, cuánto sumó o restó cubrirse."],
+    [/^Promedio de las \d+ campañas de .*Σ \(hectáreas × margen\) ÷ Σ/, "El promedio de la rentabilidad sobre el valor de la tierra en las campañas."],
+    [/^Promedio de las /, "El promedio de las campañas de 2020/21 a 2025/26."],
+    [/^Cantidad de campañas de la serie/, "Las campañas con datos de tu zona: de 2020/21 a 2025/26."],
+    [/^Cantidad de campañas con margen/, "Las campañas en las que cubrirse dejó más margen que no cubrirse."],
+    [/^Desvío estándar muestral/, "Cuánto se alejó el margen real del proyectado, en general, de una campaña a otra."],
+    [/^1 − riesgo/, "Cuánto bajó el riesgo con la cobertura."],
+    [/^Σ \(hectáreas × margen\) ÷ Σ/, "El margen dividido por el valor de la tierra."],
+    [/^margen ÷ V/, "El margen dividido por el valor de la tierra."],
+    [/^Promedio simple de \(rinde real|^Rinde real ÷ rinde esperado/, "Cuánto se alejó el rinde que se obtuvo del que se esperaba."],
+    [/^Margen real con cobertura − margen real sin cobertura/, "Lo que sumó o restó el futuro."],
+    [/^h × \[rinde/, "Lo que se ganó o se perdió al cerrar la cobertura, menos la comisión."],
+    [/^rinde esperado ÷ 10 × \(Fs/, "Lo que esperabas ganar al sembrar, con el rinde esperado y el precio del futuro, menos los costos."],
+    [/^rinde real ÷ 10 × \(Sc/, "Lo que ganaste vendiendo a cosecha, con el rinde que se obtuvo, menos los costos."],
+    [/^real sin cobertura \+ resultado/, "Lo que ganaste vendiendo a cosecha, más lo que dejó (o costó) el futuro."],
+    [/^tabla de cosecha/, "Lo que cuesta cosechar según el rinde."]
+  ];
+  function explicaMC(origen) {
+    if (typeof origen !== "string" || origen === "") return null;
+    if (origen.indexOf(" › ") < 0 && origen.indexOf(" — parte de: ") < 0) return origen; // «Lo cargaste vos», «Lo elegiste vos…»
+    if (origen.indexOf(" — parte de: ") < 0) return base().explicarOrigen(origen);
+    var formula = origen.slice(0, origen.indexOf(" — parte de: "));
+    for (var i = 0; i < EXPLICAS.length; i++) if (EXPLICAS[i][0].test(formula)) return EXPLICAS[i][1];
+    return EXPLICA_GENERAL;
+  }
+  function numeroDe(celda) { return base().numero(celda.v, celda.formato, celda.origen, { explica: explicaMC(celda.origen) }); }
+
   function montar(contenedor) {
     var a = base();
     var el = a.el;
-    var datos = raiz.TESIS_DATOS;
+    var datos = raiz.TESIS_MOTOR.datosProductor(raiz.TESIS_DATOS);
     nodos = { cultivosMontados: null, entradas: {}, avisos: {} };
 
     nodos.invitacion = el("div", { id: "mc-invitacion", "class": "mc-invitacion tarjeta" }, [
@@ -661,9 +694,9 @@
   function celdaDeDetalle(celda) {
     var a = base();
     if (typeof celda.texto === "string") {
-      return a.el("td", null, a.el("span", { "data-origen": celda.origen, title: celda.origen }, celda.texto));
+      return a.el("td", null, a.el("span", { "data-origen": celda.origen, "data-explica": "El contrato a futuro de ese cultivo y los meses de siembra y de cosecha.", title: "El contrato a futuro de ese cultivo y los meses de siembra y de cosecha." }, celda.texto));
     }
-    return a.el("td", null, a.numero(celda.v, celda.formato, celda.origen));
+    return a.el("td", null, numeroDe(celda));
   }
 
   // Detalle por cultivo de una campaña: una columna por cultivo y una fila por concepto.
@@ -692,7 +725,7 @@
     var c = fila.contexto;
     return a.el("th", { scope: "row", "class": "mc-fila-campana" }, [
       a.el("span", { "class": "mc-campana" }, fila.campana),
-      a.el("span", { "class": "mc-desvio" }, ["Rinde ", a.numero(c.desvioRinde.v, c.desvioRinde.formato, c.desvioRinde.origen)]),
+      a.el("span", { "class": "mc-desvio" }, ["Rinde ", numeroDe(c.desvioRinde)]),
       botonDetalle(fila.campana, detalle)
     ]);
   }
@@ -709,7 +742,7 @@
         return el("th", { scope: "col", title: margen.nombre }, [el("span", { "class": "muestra-serie " + margen.serie, "aria-hidden": "true" }), ENCABEZADOS[margen.clave]]);
       }))
       .concat([columna("Resultado del futuro"), columna("Rentab. sin cobertura", "Rentabilidad real sin cobertura"), columna("Rentab. con cobertura", "Rentabilidad real con cobertura")]);
-    var celda = function (c) { return el("td", null, a.numero(c.v, c.formato, c.origen)); };
+    var celda = function (c) { return el("td", null, numeroDe(c)); };
     var filas = [];
     vista.campanas.forEach(function (fila) {
       var detalle = pintarDetalle(fila);
@@ -745,7 +778,7 @@
   function nodosDeFrase(frase) {
     var a = base();
     return frase.map(function (parte) {
-      return typeof parte === "string" ? parte : a.numero(parte.v, parte.formato, parte.origen);
+      return typeof parte === "string" ? parte : numeroDe(parte);
     });
   }
 
@@ -755,7 +788,7 @@
     var a = base();
     return a.el("p", { "class": "mc-renglon" }, [
       etiqueta ? a.el("span", { "class": "mc-etiqueta" }, etiqueta) : null,
-      a.el("span", { "class": "mc-valor" }, [a.numero(celda.v, celda.formato, celda.origen)].concat(unidad ? [a.el("span", { "class": "mc-unidad" }, " " + unidad)] : []))
+      a.el("span", { "class": "mc-valor" }, [numeroDe(celda)].concat(unidad ? [a.el("span", { "class": "mc-unidad" }, " " + unidad)] : []))
     ]);
   }
 
@@ -883,18 +916,18 @@
         a.cambiar({ zona: cargada.zona, hectareas: cargada.hectareas, h: cargada.h });
         return;
       }
-      var e = a.normalizarEstado(estado, raiz.TESIS_DATOS, 0);
+      var e = a.normalizarEstado(estado, raiz.TESIS_MOTOR.datosProductor(raiz.TESIS_DATOS), 0);
       if (e.zona !== cargada.zona) {
         a.cambiar({ zona: cargada.zona });
         return;
       }
-      var cultivos = raiz.TESIS_MOTOR.cultivosDe(raiz.TESIS_DATOS, e.zona);
+      var cultivos = raiz.TESIS_MOTOR.cultivosDe(raiz.TESIS_MOTOR.datosProductor(raiz.TESIS_DATOS), e.zona);
       var total = suma(cultivos.map(function (c) { return e.hectareas[c]; }));
       var pasado = total > HECTAREAS_TOPE;
       nodos.tope.hidden = !pasado;
       var vista = pasado
         ? { zona: e.zona, cultivos: cultivos, hectareas: e.hectareas, h: e.h, unidad: e.unidad, mensaje: MENSAJE_TOPE }
-        : armarVista(raiz.TESIS_DATOS, estado);
+        : armarVista(raiz.TESIS_MOTOR.datosProductor(raiz.TESIS_DATOS), estado);
       armarEntradas(vista);
       nodos.zona.textContent = vista.zona;
       // Deslizador y unidad se sincronizan sin rehacer las entradas (no se pierde el foco al escribir).

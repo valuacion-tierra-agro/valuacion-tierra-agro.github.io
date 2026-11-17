@@ -50,9 +50,10 @@
     return formula + ", " + CON_FUTURO;
   }
 
-  var AVISO = "Este bloque usa siempre el 100 % cubierto, que es como la tesis contrasta la hipótesis, aunque cambies la proporción cubierta (acá abajo, en «¿Cuánto cubrir?», o en «Mi campo»).";
+  var QUE_SE_PROBO = "Qué se quería probar: que cubrirse con futuros baja el riesgo más de la mitad. Con qué: 114 casos (cada combinación de cultivo, zona y campaña), manteniendo fijo el rinde esperado para medir solo el efecto del precio, que es lo que cubre el futuro.";
+  var AVISO = "Este bloque usa siempre el 100 % cubierto, aunque cambies la parte cubierta más abajo o en «Probá variantes».";
   var EXPLICACION = "El futuro fija el precio de las toneladas que se esperaba cosechar. Si el rinde cae, se cosecha menos y el futuro no compensa esa pérdida: cubre el precio, no el rinde.";
-  var EXPLICACION_FIJO = "Con el rinde fijo en el esperado lo único que cambia es el precio, justo lo que cubre el futuro: por eso la reducción es tan alta. Con el rinde real también cambia lo que se cosecha, y eso queda sin cubrir.";
+  var EXPLICACION_FIJO = "Con el rinde fijo (el esperado, el mismo todos los años) lo único que cambia es el precio, justo lo que cubre el futuro: por eso la baja es tan alta. Con el rinde real también cambia lo que se cosecha, y eso queda sin cubrir.";
 
   function base() { return raiz.TESIS_APP; }
 
@@ -166,7 +167,7 @@
     return frase;
   }
 
-  var SERIE_REAL = "Con rinde real (medido en rentabilidad)";
+  var SERIE_REAL = "Con rinde real";
   var AVISO_SIN_GRAFICO = "No se puede graficar: el riesgo sin cobertura de algún cultivo es 0.";
   var CLAVE_CULTIVO = { "Trigo": "trigo", "Soja": "soja", "Maíz": "maiz" };
 
@@ -191,9 +192,9 @@
     var total = filas.filter(function (f) { return f.total; })[0];
     var v = veredicto(cultivos.map(function (f) { return { cultivo: f.nombre, real: f.cien }; }), meta);
     var porCultivo = cultivos.map(function (f) { return [f.cien, " en " + f.nombre.toLowerCase()]; });
-    var frase = ["Con el rinde fijo, como mide la tesis, la cobertura del 100 % reduce ", total.cien,
-      " el desvío de la rentabilidad realizada respecto de la proyectada ("].concat(enumerarPartes(porCultivo),
-      ["); con el 50 % cubierto la reduce ", total.cincuenta, ". "], v.frase);
+    var cierre = v.seCumple ? ["Es más que el ", meta, " que se pedía: la hipótesis se cumple."] : v.frase;
+    var frase = ["Resultado: con el rinde fijo, cubrir el 100 % de la cosecha baja el riesgo ", total.cien, " ("].concat(enumerarPartes(porCultivo),
+      ["); con el 50 % cubierto lo baja ", total.cincuenta, ". "], cierre);
     return { seCumple: v.seCumple, frase: frase };
   }
 
@@ -201,14 +202,14 @@
     var f = base().formato;
     var porcentajeMeta = f.aplicar(meta.formato, meta.v);
     return {
-      titulo: "Reducción del desvío de la rentabilidad con rinde fijo (tesis, 114 casos), contra el " + porcentajeMeta + " que pide la hipótesis",
+      titulo: "Cuánto baja el riesgo con rinde fijo (114 casos), contra el " + porcentajeMeta + " que se pedía",
       unidad: "",
       categorias: filas.map(function (x) { return x.nombre; }),
       series: [
         { nombre: "Con el 100 % cubierto", clase: "serie-con", valores: filas.map(function (x) { return x.cien.v; }) },
         { nombre: "Con el 50 % cubierto", clase: "serie-proyectado", valores: filas.map(function (x) { return x.cincuenta.v; }) }
       ],
-      referencia: { valor: meta.v, nombre: "Lo que pide la hipótesis (" + porcentajeMeta + ")", etiqueta: porcentajeMeta },
+      referencia: { valor: meta.v, nombre: "Lo que se pedía (" + porcentajeMeta + ")", etiqueta: porcentajeMeta },
       margen: { derecha: 54 }
     };
   }
@@ -220,13 +221,13 @@
     if (!completos) return null;
     var porcentajeMeta = f.aplicar(meta.formato, meta.v);
     return {
-      titulo: "Con rinde real: reducción del riesgo por cultivo con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto, en rentabilidad, contra el " + porcentajeMeta + " de la hipótesis",
+      titulo: "Con rinde real: cuánto baja el riesgo por cultivo con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto, contra el " + porcentajeMeta + " pedido",
       unidad: "",
       categorias: cultivos.map(function (c) { return c.cultivo; }),
       series: [
         { nombre: SERIE_REAL, clase: "serie-con", valores: cultivos.map(function (c) { return c.real.v; }) }
       ],
-      referencia: { valor: meta.v, nombre: "Referencia: " + porcentajeMeta + " (umbral de la hipótesis)", etiqueta: porcentajeMeta },
+      referencia: { valor: meta.v, nombre: "Meta: " + porcentajeMeta, etiqueta: porcentajeMeta },
       margen: { derecha: 54 }
     };
   }
@@ -239,8 +240,8 @@
     var mayor = validos.reduce(function (acc, c) { return c.real.v > acc.real.v ? c : acc; });
     var sinDato = cultivos.filter(function (c) { return !(c.real && esNumero(c.real.v)); }).map(function (c) { return c.cultivo.toLowerCase(); });
     var falta = sinDato.length ? " Falta el dato de " + enumerar(sinDato) + "." : "";
-    return ["Con rinde real, la cobertura de precio reduce menos el riesgo (de ", menor.real, " a ", mayor.real,
-      "), porque no cubre el riesgo de cosecha. No es la medida de la hipótesis." + falta];
+    return ["Con rinde real, cubrirse baja menos el riesgo (de ", menor.real, " a ", mayor.real,
+      "), porque el futuro no cubre lo que se cosecha. Es un análisis aparte: no es con lo que se prueba la hipótesis." + falta];
   }
 
   function armarHipotesis(datos) {
@@ -487,8 +488,8 @@
     return curva && Array.isArray(curva.cultivos) ? curva.cultivos.filter(function (c) { return c.cultivo === cultivo; })[0] || null : null;
   }
 
-  var AYUDA_SORPRESA = "Sorpresa = margen real sin cobertura − margen proyectado (USD/ha, promedio de las zonas). Se parte en lo que explicó el precio, lo que explicó el rinde y la interacción entre los dos.";
-  var AVISO_MINIMA = "Describe lo que pasó en seis campañas; no es una recomendación. Tampoco es necesariamente el punto más bajo de la curva dibujada: el libro la calcula con la varianza conjunta de las zonas y la curva promedia el desvío de cada zona.";
+  var AYUDA_SORPRESA = "Cuánto se alejó el margen real del proyectado (USD/ha, promedio de las zonas), partido en lo que explicó el precio, lo que explicó el rinde y lo que explicaron los dos juntos.";
+  var AVISO_MINIMA = "Describe lo que pasó en seis campañas; no es una recomendación. Puede no coincidir con el punto más bajo de la curva, porque se calcula juntando todas las zonas y la curva promedia cada zona.";
   // Desde cuántos puntos de diferencia entre la zona de mayor y la de menor se dice que la proporción varía mucho.
   var DISPERSION_GRANDE = 0.5;
   var AYUDA_DIFERENCIA = "Diferencia negativa: lo que se resignó por cubrirse. Positiva: lo que se ganó.";
@@ -498,14 +499,14 @@
   // el desvío de cada zona). rango: { min, max } de la misma cuenta zona por zona (celdas), o null si no hay.
   function fraseMinima(cultivo, hMinima, rango) {
     if (!hMinima || !esNumero(hMinima.v)) return [cultivo + ": no se puede calcular, el resultado del futuro no varió entre campañas."];
-    var frase = [cultivo + ": la proporción de mínima varianza que calcula el libro (RR_Cobertura_Parcial, columna H) es ", hMinima];
-    if (hMinima.v <= 0) frase.push(", es decir, ninguna cobertura bajó la varianza conjunta de estas seis campañas");
+    var frase = [cultivo + ": la parte cubierta que deja el resultado más estable es ", hMinima];
+    if (hMinima.v <= 0) frase.push(", es decir, ninguna cobertura lo volvió más estable en estas seis campañas");
     else if (hMinima.v > 1) frase.push(", más de lo que se esperaba cosechar");
     frase.push(".");
     if (rango) {
       var mucho = rango.max.v - rango.min.v >= DISPERSION_GRANDE;
-      frase = frase.concat([mucho ? " Zona por zona varía mucho: la misma cuenta da entre " : " Zona por zona la misma cuenta da entre ",
-        rango.min, " y ", rango.max, "."]);
+      frase = frase.concat([mucho ? " Zona por zona varía mucho: va de " : " Zona por zona va de ",
+        rango.min, " a ", rango.max, "."]);
     }
     return frase;
   }
@@ -720,10 +721,46 @@
 
   // Nodos de una frase: el texto va como texto y cada celda como número con su origen.
   function nodosDeFrase(frase) {
-    var a = base();
     return frase.map(function (parte) {
-      return typeof parte === "string" ? parte : a.numero(parte.v, parte.formato, parte.origen);
+      return typeof parte === "string" ? parte : numeroDe(parte);
     });
+  }
+
+  // Frase en simple para la ventanita «De dónde sale este número» (el archivo y la celda siguen en data-origen y en «Datos y fuentes»).
+  var EXPLICA_GENERAL = "Lo calculamos con los datos de las seis campañas, de 2020/21 a 2025/26.";
+  var EXPLICAS = [
+    [/^1 − \(promedio de zonas/, "Cuánto baja el riesgo al cubrir el 100 %: se compara cuánto se alejaba el resultado de lo proyectado sin cubrir y cubriendo, promediando las zonas."],
+    [/^Desvío estándar muestral/, "Cuánto se alejó el margen real del proyectado, en general, de una campaña a otra."],
+    [/^1 − riesgo con cobertura/, "Cuánto baja el riesgo con la cobertura."],
+    [/^La peor caída de rinde/, "La peor caída del rinde frente al esperado entre las seis campañas."],
+    [/^Campaña de la peor caída/, "La campaña en la que más cayó el rinde frente al esperado."],
+    [/^«subió»/, "Compara el riesgo con cobertura y sin cobertura."],
+    [/^Cantidad de pares de cultivo y zona$/, "Las combinaciones de cultivo y zona que se analizaron."],
+    [/^Cantidad de pares de cultivo y zona/, "Cuántas combinaciones de cultivo y zona cumplen esa condición."],
+    [/^Promedio de las zonas del desvío estándar muestral de la sorpresa sin cobertura/, "Cuánto se alejó, en promedio de las zonas, el margen real del proyectado sin cubrirse."],
+    [/^Promedio de las zonas del desvío estándar muestral/, "Cuánto se alejó, en promedio de las zonas, el margen real del proyectado con la parte elegida cubierta."],
+    [/^riesgo con h ÷ riesgo/, "Qué parte del riesgo que tenías sin cubrir queda con la cobertura elegida."],
+    [/^Promedio de todos los casos del cultivo del margen real sin cobertura/, "El margen promedio por hectárea sin cubrirte."],
+    [/^Promedio de todos los casos del cultivo de/, "El margen promedio por hectárea con la parte elegida cubierta."],
+    [/^margen real medio con h/, "El margen promedio con la parte elegida cubierta menos el que tendrías sin cubrirte."],
+    [/^− Σ covarianza|^− covarianza/, "La parte cubierta con la que el resultado queda más estable, calculada con las seis campañas."],
+    [/^rinde esperado ÷ 10 × \(spot/, "Lo que sumó o restó el cambio del precio entre la siembra y la cosecha."],
+    [/^\(rinde real − rinde esperado\) ÷ 10 × \(futuro/, "Lo que sumó o restó que el rinde fuera distinto del esperado."],
+    [/^\(rinde real − rinde esperado\) ÷ 10 × \(spot/, "Lo que sumaron o restaron juntos el cambio de precio y el de rinde."]
+  ];
+  function explicaRH(origen) {
+    if (typeof origen !== "string" || origen === "") return null;
+    if (origen.indexOf("Parametros › B9") >= 0) return "La meta que se planteó: bajar el riesgo más del 50 %.";
+    if (origen.indexOf("procesamiento estadístico") >= 0) return "Cuánto baja el riesgo de la rentabilidad al cubrir con rinde fijo, tomando los 114 casos del estudio.";
+    if (origen.indexOf(" — parte de: ") < 0) return base().explicarOrigen(origen);
+    var formula = origen.slice(0, origen.indexOf(" — parte de: "));
+    for (var i = 0; i < EXPLICAS.length; i++) if (EXPLICAS[i][0].test(formula)) return EXPLICAS[i][1];
+    return EXPLICA_GENERAL;
+  }
+  function numeroDe(c, opciones) {
+    var o = { explica: explicaRH(c.origen) };
+    if (opciones && opciones.enfocable === false) o.enfocable = false;
+    return base().numero(c.v, c.formato, c.origen, o);
   }
 
   // Filtro de «Zona por zona»: se recuerda acá (no es parte del estado compartido de la página).
@@ -736,10 +773,11 @@
     pintado = { datos: null, estaticos: false };
     filtroCultivo = "todos";
     contenedor.appendChild(el("p", { "class": "rh-intro" },
-      "Cuánto riesgo le saca la cobertura con futuros al productor y qué pasa con el 50 % que pedía la hipótesis de la tesis."));
+      "La hipótesis era que cubrirse con futuros baja el riesgo más del 50 %. Acá ves qué pasó con los datos de 2020/21 a 2025/26."));
     nodos.hipotesis = el("div", { id: "rh-hipotesis-resultados" });
     contenedor.appendChild(el("section", { id: "rh-hipotesis", "class": "rh-bloque" }, [
       el("h3", null, "¿Se cumple la hipótesis?"),
+      el("p", { "class": "rh-explicacion" }, QUE_SE_PROBO),
       el("p", { "class": "ayuda" }, AVISO),
       nodos.hipotesis
     ]));
@@ -752,7 +790,7 @@
     contenedor.appendChild(el("section", { id: "rh-zonas", "class": "rh-bloque" }, [
       el("h3", null, "Zona por zona"),
       el("p", { "class": "ayuda" },
-        "Con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto, como en la tesis. Riesgo: cuánto se aleja el margen real del proyectado de una campaña a otra."),
+        "Con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto. Riesgo: cuánto se aleja el margen real del proyectado de una campaña a otra."),
       el("div", { "class": "rh-filtro" }, [el("label", { "for": "rh-filtro-cultivo" }, "Cultivo"), nodos.filtro]),
       nodos.zonas
     ]));
@@ -769,14 +807,14 @@
       el("h3", null, "¿Cuánto cubrir?"),
       el("label", { "for": "rh-h" }, "Parte cubierta con futuros"),
       el("div", { "class": "mc-campo-entrada" }, [nodos.h, nodos.hValor]),
-      el("p", { "class": "ayuda" }, "Es la misma proporción de «Mi campo»: si la cambiás acá, cambia allá."),
+      el("p", { "class": "ayuda" }, "Es la misma parte cubierta de «Probá variantes»: si la cambiás acá, cambia allá."),
       nodos.balance,
       nodos.cobertura
     ]));
 
     nodos.sorpresa = el("div", { id: "rh-sorpresa-resultados" });
     contenedor.appendChild(el("section", { id: "rh-sorpresa", "class": "rh-bloque" }, [
-      el("h3", null, "De dónde vino la sorpresa"),
+      el("h3", null, "Por qué el margen se alejó de lo proyectado"),
       el("p", { "class": "ayuda" }, AYUDA_SORPRESA),
       nodos.sorpresa
     ]));
@@ -786,9 +824,9 @@
   function pintarTablaTesis(h) {
     var a = base();
     var el = a.el;
-    var celdaNumero = function (c) { return el("td", null, a.numero(c.v, c.formato, c.origen)); };
+    var celdaNumero = function (c) { return el("td", null, numeroDe(c)); };
     return el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla" }, [
-      el("caption", null, "Reducción del desvío de la rentabilidad con rinde fijo (tesis, 114 casos)"),
+      el("caption", null, "Cuánto baja el riesgo de la rentabilidad con rinde fijo (114 casos)"),
       el("thead", null, el("tr", null, ["Cultivo", "Con el 100 % cubierto", "Con el 50 % cubierto"].map(function (t) { return el("th", { scope: "col" }, t); }))),
       el("tbody", null, h.filasTesis.map(function (f) {
         return el("tr", null, [el("th", { scope: "row" }, f.nombre), celdaNumero(f.cien), celdaNumero(f.cincuenta)]);
@@ -801,7 +839,7 @@
     var a = base();
     var el = a.el;
     var columnas = ["Cultivo", "Con rinde real, en rentabilidad", "Con rinde real, en USD/ha"];
-    var celdaNumero = function (c) { return el("td", null, a.numero(c.v, c.formato, c.origen)); };
+    var celdaNumero = function (c) { return el("td", null, numeroDe(c)); };
     return el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla" }, [
       el("caption", null, "Con rinde real: cuánto riesgo sacó la cobertura con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto"),
       el("thead", null, el("tr", null, columnas.map(function (texto) { return el("th", { scope: "col" }, texto); }))),
@@ -848,13 +886,16 @@
 
   // Un texto con origen (campaña, «subió»): se toca igual que un número con el mouse o el dedo. Como los números de las
   // tablas largas, no es una parada de tabulador: el teclado llega a su origen por el botón «Ver orígenes» de la fila.
-  function textoConOrigen(clase, celdaTexto) {
-    return base().el("span", { "class": clase, "data-origen": celdaTexto.origen, title: celdaTexto.origen }, celdaTexto.texto);
+  function textoConOrigen(clase, celdaTexto, explica) {
+    return base().el("span", { "class": clase, "data-origen": celdaTexto.origen, "data-explica": explica, title: explica }, celdaTexto.texto);
   }
+  var EXPLICA_ESTADO = "Compara el riesgo con cobertura y sin cobertura.";
+  var EXPLICA_CAMPANA_PEOR = "La campaña en la que más cayó el rinde frente al esperado.";
+  var EXPLICA_PESO = "Si pesó más el cambio del precio o el del rinde en lo que se alejó el margen.";
 
   // Un número de una tabla larga: con origen (se toca) pero sin ser parada de tabulador.
   function numeroSinTabulador(c) {
-    return base().numero(c.v, c.formato, c.origen, { enfocable: false });
+    return numeroDe(c, { enfocable: false });
   }
 
   // El botón «Ver orígenes» de una fila: UNA parada de tabulador por fila en vez de una por número. Abre la lista de
@@ -876,16 +917,16 @@
     var el = a.el;
     var numeroEn = function (c) { return el("td", null, numeroSinTabulador(c)); };
     // Sólo la fila donde cubrirse subió el riesgo lleva color; además dice «subió» con letras (no sólo color).
-    var estado = fila.subio ? textoConOrigen("rh-estado", fila.estado) : textoConOrigen("dato-texto", fila.estado);
+    var estado = fila.subio ? textoConOrigen("rh-estado", fila.estado, EXPLICA_ESTADO) : textoConOrigen("dato-texto", fila.estado, EXPLICA_ESTADO);
     var boton = botonOrigenes(fila.cultivo + " · " + fila.zona,
       "Ver orígenes de los números de " + fila.cultivo + ", " + fila.zona, function () {
-        var num = function (etiqueta, c) { return { etiqueta: etiqueta, v: c.v, formato: c.formato, origen: c.origen }; };
+        var num = function (etiqueta, c) { return { etiqueta: etiqueta, v: c.v, formato: c.formato, origen: c.origen, explica: explicaRH(c.origen) }; };
         return [
           num("Riesgo sin cobertura (USD/ha)", fila.sdSin), num("Riesgo con cobertura (USD/ha)", fila.sdCon), num("Reducción", fila.reduccion),
           num("Riesgo en rentabilidad sin cobertura", fila.sdRSin), num("Riesgo en rentabilidad con cobertura", fila.sdRCon),
           num("Reducción en rentabilidad", fila.reduccionR), num("Peor caída de rinde", fila.peorDesvio),
-          { etiqueta: "Campaña de la peor caída", texto: fila.campanaPeor.texto, origen: fila.campanaPeor.origen },
-          { etiqueta: "Con cobertura el riesgo…", texto: fila.estado.texto, origen: fila.estado.origen }
+          { etiqueta: "Campaña de la peor caída", texto: fila.campanaPeor.texto, origen: fila.campanaPeor.origen, explica: EXPLICA_CAMPANA_PEOR },
+          { etiqueta: "Con cobertura el riesgo…", texto: fila.estado.texto, origen: fila.estado.origen, explica: EXPLICA_ESTADO }
         ];
       });
     return el("tr", fila.subio ? { "class": "rh-subio" } : null, [
@@ -893,7 +934,7 @@
       numeroEn(fila.sdSin), numeroEn(fila.sdCon), numeroEn(fila.reduccion),
       numeroEn(fila.sdRSin), numeroEn(fila.sdRCon), numeroEn(fila.reduccionR),
       numeroEn(fila.peorDesvio),
-      el("td", null, textoConOrigen("dato-texto", fila.campanaPeor)),
+      el("td", null, textoConOrigen("dato-texto", fila.campanaPeor, EXPLICA_CAMPANA_PEOR)),
       el("td", null, estado),
       el("td", { "class": "col-origenes" }, boton)
     ]);
@@ -922,7 +963,7 @@
     var el = a.el;
     var columnas = ["Cultivo", "Riesgo sin cubrirse", "Riesgo con la parte elegida", "Queda del riesgo sin cubrir (en USD/ha)",
       "Margen real medio", "Diferencia contra no cubrirse"];
-    var celdaNumero = function (x) { return el("td", null, a.numero(x.v, x.formato, x.origen)); };
+    var celdaNumero = function (x) { return el("td", null, numeroDe(x)); };
     return el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla" }, [
       el("caption", null, "Riesgo y margen medio por cultivo con " + enteroConPorcentaje(c.h) + " cubierto (promedio de las zonas, USD/ha)"),
       el("thead", null, el("tr", null, columnas.map(function (texto) { return el("th", { scope: "col" }, texto); }))),
@@ -948,7 +989,7 @@
       return el("li", null, [el("span", { "class": "muestra-serie " + serie.clase, "aria-hidden": "true" }), serie.nombre]);
     });
     return el("figure", { "class": "rh-grafico" }, [
-      a.encabezadoDeGrafico(c.grafico.titulo, "riesgo (desvío estándar de la sorpresa, promedio de las zonas), en USD por hectárea", "parte cubierta con futuros, en porcentaje"),
+      a.encabezadoDeGrafico(c.grafico.titulo, "riesgo (cuánto se alejó el margen real del proyectado, promedio de las zonas), en USD por hectárea", "parte cubierta con futuros, en porcentaje"),
       svg,
       el("figcaption", null, [
         el("ul", { "class": "leyenda" }, items),
@@ -979,16 +1020,16 @@
     var numeroEn = function (c) { return el("td", null, numeroSinTabulador(c)); };
     var boton = botonOrigenes(fila.cultivo + " · campaña " + fila.campana,
       "Ver orígenes de los números de " + fila.cultivo + ", campaña " + fila.campana, function () {
-        var num = function (etiqueta, c) { return { etiqueta: etiqueta, v: c.v, formato: c.formato, origen: c.origen }; };
+        var num = function (etiqueta, c) { return { etiqueta: etiqueta, v: c.v, formato: c.formato, origen: c.origen, explica: explicaRH(c.origen) }; };
         return [
-          num("Efecto precio (USD/ha)", fila.efectoPrecio), num("Efecto rinde (USD/ha)", fila.efectoRinde), num("Interacción (USD/ha)", fila.interaccion),
-          { etiqueta: "Pesó más", texto: fila.pesoMas.texto, origen: fila.pesoMas.origen }
+          num("Efecto precio (USD/ha)", fila.efectoPrecio), num("Efecto rinde (USD/ha)", fila.efectoRinde), num("Los dos juntos (USD/ha)", fila.interaccion),
+          { etiqueta: "Pesó más", texto: fila.pesoMas.texto, origen: fila.pesoMas.origen, explica: EXPLICA_PESO }
         ];
       });
     return el("tr", fila.pesoMas.texto === "Rinde" ? { "class": "rh-peso-rinde" } : null, [
       el("th", { scope: "row" }, [el("span", { "class": "rh-cultivo" }, fila.cultivo), el("span", { "class": "rh-campana" }, fila.campana)]),
       numeroEn(fila.efectoPrecio), numeroEn(fila.efectoRinde), numeroEn(fila.interaccion),
-      el("td", null, textoConOrigen("dato-texto", fila.pesoMas)),
+      el("td", null, textoConOrigen("dato-texto", fila.pesoMas, EXPLICA_PESO)),
       el("td", { "class": "col-origenes" }, boton)
     ]);
   }
@@ -996,11 +1037,11 @@
   function pintarSorpresa(sorpresa) {
     var a = base();
     var el = a.el;
-    var columnas = ["Cultivo y campaña", "Efecto precio", "Efecto rinde", "Interacción", "Pesó más", "Orígenes"];
+    var columnas = ["Cultivo y campaña", "Efecto precio", "Efecto rinde", "Los dos juntos", "Pesó más", "Orígenes"];
     a.vaciar(nodos.sorpresa);
     nodos.sorpresa.appendChild(el("div", { "class": "rh-lectura" }, sorpresa.lectura.map(function (frase) { return el("p", null, textoDeFrase(frase)); })));
     nodos.sorpresa.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla rh-tabla-sorpresa" }, [
-      el("caption", null, "Sorpresa por cultivo y campaña, partida en precio y rinde (USD/ha)"),
+      el("caption", null, "Diferencia con lo proyectado, por cultivo y campaña, partida en precio y rinde (USD/ha)"),
       el("thead", null, el("tr", null, columnas.map(encabezadoDeColumna))),
       el("tbody", null, sorpresa.filas.map(pintarFilaSorpresa))
     ])));

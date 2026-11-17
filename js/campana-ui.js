@@ -19,6 +19,8 @@
   var MAX_NOMBRE = 60;
   var ANCHO_IMPRESION = 340;   // px de cada gráfico en la hoja A4 (dos por renglón)
   var ALTO_IMPRESION = 185;
+  // Bloque «Futuro contra spot proyectado»: oculto por ahora (pantalla, PDF e índice). Poné true para volver a mostrarlo.
+  var MOSTRAR_FUTURO_VS_SPOT = false;
   // Colores de los gráficos en papel blanco: fijos y oscuros, aunque la pantalla sea oscura. Son los mismos valores que
   // redefine el :root de @media print en css/estilos.css (más el fondo y las capas que usan el aviso flotante y la leyenda).
   var PALETA_IMPRESION = {
@@ -1750,6 +1752,7 @@
       ]
     });
 
+    if (MOSTRAR_FUTURO_VS_SPOT) {
     // Futuro contra spot proyectado, por cultivo (margen bruto por hectárea), con la conclusión anotada en el gráfico.
     var spot = v.resultados[0], fut = v.resultados[1];
     var elegis = hUniforme(v.hPorCultivo);
@@ -1782,6 +1785,7 @@
           : { value: f.valor, itemStyle: { color: f.color }, label: { position: f.valor < 0 ? "left" : "right" } };
       }), label: { show: true, color: txt.color, fontSize: chica + 1, fontWeight: 600, formatter: function (q) { return fm.usd(q.value); } } }]
     });
+    }
 
     var series = [{ h: 0, nombre: "Sin cubrirte", color: cSin }, { h: 1, nombre: "Todo cubierto", color: cCon }];
     var uniformeG = hUniforme(v.hPorCultivo);
@@ -1847,7 +1851,8 @@
       " = margen bruto ", num(p.margen, "usd", o(TEXTO_FORMULA_MB)), " USD. Sobre el valor de tu tierra (", num(v.valorTotal, "usd", o("valor de la tierra = hectáreas × V")), " USD) es una rentabilidad R de ",
       num(p.r, "porcentaje", o("R = MB total ÷ (hectáreas × V)")), "."]);
 
-    // Futuro contra spot
+    // Futuro contra spot (oculto con MOSTRAR_FUTURO_VS_SPOT = false)
+    if (MOSTRAR_FUTURO_VS_SPOT) {
     var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
     var mejores = v.nombres.filter(function (c) { return v.resultados[1].porCultivo[c].mbHa > v.resultados[0].porCultivo[c].mbHa; });
     h.futuro.conclusion.textContent = conclusionFuturo(v);
@@ -1859,15 +1864,16 @@
     frase(h.futuro.lectura, [d >= 0 ? "Cubriendo todo, tu margen por hectárea sube " : "Cubriendo todo, tu margen por hectárea baja ", num(Math.abs(d), "usd", o("diferencia de MB por hectárea entre cubrir todo y no cubrir")),
       " USD" + (v.nombres.length > 1 ? "; en " + (mejores.length ? listaEnTexto(mejores).toLowerCase() + " el futuro deja más que el spot." : "ningún cultivo el futuro deja más que el spot.") : "."),
       " Precios de venta usados (USD por tonelada): " + precios + ". El spot proyectado es el último precio de cosecha, ajustado por lo que varió por año entre 2020/21 y 2025/26."]);
+    }
 
     // Seis escenarios
     var rs0 = v.escenarios[0].r, rs = v.escenarioUsuario.r;
     var rango = function (r) { return [Math.min.apply(null, r), Math.max.apply(null, r)]; };
     var a = rango(rs0), b = rango(rs);
     var cubre = hayCobertura(v.hPorCultivo);
-    var renglones = [el("span", { "class": "sc-rango-rotulo" }, "Rentabilidad de tu tierra, según cómo se muevan los precios"),
-      el("span", { "class": "sc-renglon" }, ["Sin cubrirte: entre ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " y ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir"))])];
-    if (cubre) renglones.push(el("span", { "class": "sc-renglon" }, ["Con tu cobertura: entre ", num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")), " y ", num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura"))]));
+    var renglones = [el("span", { "class": "sc-rango-rotulo" }, "Rentabilidad de tu tierra (margen sobre lo que vale el campo)"),
+      el("span", { "class": "sc-renglon" }, ["Si no te cubrís, tu tierra rendiría entre ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " y ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir")), ", según cómo vengan los precios."])];
+    if (cubre) renglones.push(el("span", { "class": "sc-renglon" }, ["Con tu cobertura, entre ", num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")), " y ", num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura")), "."]));
     frase(h.escenarios.titular, renglones);
     // En qué campañas convenía no cubrirse (el precio subió después de la siembra) y en cuáles la cobertura protegía (bajó).
     var rs100 = v.escenarios[1].r;
@@ -1989,7 +1995,7 @@
     nodos.avisoLink.hidden = true;
     nodos.cabeceraImpresion = el("div", { "class": "sc-impresion-cabecera" }, [
       el("p", { "class": "sc-imp-titulo" }, "Simulador de cobertura con futuros · Informe de campaña 2026/27"),
-      el("p", { "class": "sc-imp-detalle" }, "Región Pampeana · pequeños y medianos productores (hasta 1.000 ha) · TIF Lic. en Finanzas (UADE)")]);
+      el("p", { "class": "sc-imp-detalle" }, "Región Pampeana · pequeños y medianos productores (hasta 1.000 ha) · Trabajo final de la Licenciatura en Finanzas (UADE)")]);
     nodos.fecha = el("p", { "class": "sc-imp-fecha" });
     nodos.cabeceraImpresion.appendChild(nodos.fecha);
     nodos.encabezado = el("p", { "class": "sc-encabezado-informe" });
@@ -2039,7 +2045,7 @@
     nodos.franja = el("div", { "class": "sc-franja", id: "sc-franja" });
     // Tres bloques, uno por pregunta: qué tengo, qué riesgo corro y qué me conviene hacer.
     var bloques = [["sc-b-campana", "01", "Tu campaña", [nodos.sabemos, hTorta, hCascada]], ["sc-b-riesgo", "02", "Tu riesgo", [nodos.hoy, hEscenarios]],
-      ["sc-b-propuesta", "03", "Cobertura del Riesgo Precio", [nodos.propuesta, hFuturo]]];
+      ["sc-b-propuesta", "03", "Cobertura del Riesgo Precio", MOSTRAR_FUTURO_VS_SPOT ? [nodos.propuesta, hFuturo] : [nodos.propuesta]]];
     nodos.nav = el("nav", { "class": "sc-nav", "aria-label": "Bloques de los resultados" });
     var lista = el("ol", { "class": "sc-nav-lista" });
     nodos.nav.appendChild(lista);

@@ -9,11 +9,15 @@
   var nodos = {};
   var NIVELES = [0, 0.5, 1];                 // las tres estrategias de la tesis
   var NIVELES_DET = [0, 0.25, 0.5, 0.75, 1]; // «si hubieras cubierto»
-  var AVISO = "Esto describe lo que hubiera pasado con los datos de la tesis. No es asesoramiento financiero.";
+  var AVISO = "Esto describe lo que hubiera pasado entre 2020/21 y 2025/26. No es asesoramiento financiero.";
+  // Frase en simple de la ventanita «De dónde sale este número»; el origen técnico (archivo y celda) queda en data-origen y en «Datos y fuentes».
+  var EXPLICA = "Lo calculamos con tus hectáreas y con los precios, rindes y costos de tu zona entre 2020/21 y 2025/26.";
+  var EXPLICA_RIESGO = "Cuánto se alejó tu margen real del proyectado de una campaña a otra, con tus hectáreas y los datos de tu zona.";
 
   function base() { return raiz.TESIS_APP; }
   function el(e, a, c) { return base().el(e, a, c); }
-  function num(v, f, o) { return base().numero(v, f, o); }
+  function numBase(v, f, o, explica) { return base().numero(v, f, o, { explica: explica || base().explicarOrigen(o, EXPLICA) }); }
+  function num(v, f, o) { return numBase(v, f, o); }
   function V() { return raiz.TESIS_VISUAL || null; }
   function numA(clave, valor, formato, origen) {
     var nodo = num(valor, formato, origen);
@@ -44,7 +48,7 @@
   //   detalle[t]: por campaña, el margen total con 0, 25, 50, 75 y 100 % y, por cultivo, Fs, Sc, Fc, la variación del precio, su efecto
   //     en el margen (rinde fijo × (Sc − Fs) × hectáreas), la base (Sc − Fc) y cuánto del ingreso esperado se llevaban los costos.
   function calcular(datos, zona, ha) {
-    datos = datos || raiz.TESIS_DATOS;
+    datos = raiz.TESIS_MOTOR.datosProductor(datos || raiz.TESIS_DATOS);
     var m = raiz.TESIS_MOTOR;
     var comision = datos.parametros.comision.v;
     var cultivos = Object.keys(ha);
@@ -167,13 +171,13 @@
     var boton = el("button", { type: "button", "class": "tc-boton", "data-h": String(pct) }, "Probala en Simulá tu campaña");
     boton.addEventListener("click", function () { irASimula(h); });
     return el("article", { "class": "tarjeta tc-estrategia", "data-h": String(pct) }, [
-      el("p", { "class": "tc-etiqueta" }, h === 1 ? "La que mide la hipótesis" : "La cobertura parcial"),
+      el("p", { "class": "tc-etiqueta" }, h === 1 ? "La cobertura total" : "La cobertura parcial"),
       el("h4", null, "Cubrir el " + pct + " % de la cosecha"),
       el("dl", { "class": "tc-datos" }, [
         dato("Margen bruto total promedio", [numA("tc-media-" + pct, e.media, "usd", o), " USD"]),
         dato("Peor año", [num(e.peor, "usd", o), " USD (" + e.campanaPeor + ")"]),
         dato("Mejor año", [num(e.mejor, "usd", o), " USD (" + e.campanaMejor + ")"]),
-        dato("Desvío entre campañas", [num(e.desvio, "usd", o), " USD"]),
+        dato("Cuánto varió entre campañas", [num(e.desvio, "usd", o), " USD"]),
         dato("Frente a vender a cosecha", ["Te convino en " + e.conviene + " de " + n + " campañas"])
       ]),
       el("p", { "class": "tc-para" }, PARA_QUIEN[h]),
@@ -221,7 +225,7 @@
       return el("tr", null, [el("th", { scope: "row" }, x.cultivo), el("td", null, num(x.fs, "usd2", o)), el("td", null, num(x.sc, "usd2", o)),
         el("td", null, num(x.variacion, "porcentaje", o)), el("td", null, num(x.efectoPrecio, "usd", o)), el("td", null, num(x.base, "usd2", o))]);
     });
-    var cab = ["Cultivo", "Esperabas al sembrar (Fs, USD/t)", "Cobraste (Sc, USD/t)", "Variación del precio", "Efecto en tu margen (USD)", "Base si cubrías (Sc − Fc, USD/t)"];
+    var cab = ["Cultivo", "Precio esperado al sembrar (USD/t)", "Precio cobrado a cosecha (USD/t)", "Variación del precio", "Efecto en tu margen (USD)", "Base si cubrías (USD/t)"];
     var cobertura = NIVELES_DET.slice(1).map(function (h) {
       var dif = d.niveles[h] - d.niveles[0];
       var txt = dif >= 0 ? " más que vendiendo a cosecha)" : " menos que vendiendo a cosecha)";
@@ -238,7 +242,7 @@
         el("p", { "class": "tc-relato" }, costos),
         el("h5", null, "Si hubieras cubierto"),
         el("ul", { "class": "tc-cobertura" }, cobertura),
-        el("p", { "class": "tc-nota" }, "Cuenta con el rinde fijo de planteo, tus " + f.aplicar("entero", r.hectareas) + " ha y la comisión de la tesis. Al cubrir queda la base (Sc − Fc), que no se cubre.")
+        el("p", { "class": "tc-nota" }, "Cuenta con el rinde de referencia de tu zona, tus " + f.aplicar("entero", r.hectareas) + " ha y la comisión de los futuros. La base es la diferencia entre el precio de tu zona y el del contrato a cosecha: no se cubre.")
       ])]);
   }
 
@@ -303,8 +307,8 @@
       return { coord: [r.campanas[i], sc[i]], value: (v >= 0 ? "+" : "−") + base().formato.aplicar("porcentaje", Math.abs(v)), itemStyle: { color: color } };
     };
     var o = EC.opcionDeLineas(t, r.campanas, [
-      { nombre: "Esperado (Fs)", color: c.esperado, valores: fs, trazo: "dashed", simbolo: "circle", simboloTam: 7, grosor: 2 },
-      { nombre: "Cobrado (Sc)", color: c.cobrado, valores: sc, simbolo: "circle", simboloTam: 9, grosor: 4 }
+      { nombre: "Esperado al sembrar", color: c.esperado, valores: fs, trazo: "dashed", simbolo: "circle", simboloTam: 7, grosor: 2 },
+      { nombre: "Cobrado a cosecha", color: c.cobrado, valores: sc, simbolo: "circle", simboloTam: 9, grosor: 4 }
     ], function (x) { return base().formato.aplicar("usd", x) + " USD/t"; }, { escalar: true });
     o.series[1].markPoint = { symbol: "pin", symbolSize: 62, label: { color: "#161616", fontFamily: t.fuente, fontWeight: 600, fontSize: 12 },
       data: [marca(e0.iMejor, c.gana), marca(e0.iPeor, c.pierde)] };
@@ -328,14 +332,14 @@
       nodos.pendientes.push({ clave: "precio-" + c.cultivo, nodo: nodo, opcion: function () { return opcionPrecio(r, i); } });
       return el("div", { "class": "tc-multiple" }, [el("h5", null, c.cultivo + " (USD por tonelada)"), nodo]);
     });
-    return bloque(titulo, "Cómo se lee: la línea punteada es el precio que esperabas al sembrar (Fs) y la azul el que cobraste a cosecha (Sc). Los globos marcan tu mejor campaña (verde) y tu peor (rojo) con la sorpresa de precio de cada cultivo. Cuanto más separadas las líneas, más pesó el precio.",
+    return bloque(titulo, "Cómo se lee: la línea punteada es el precio que esperabas al sembrar y la azul el que cobraste a cosecha. Los globos marcan tu mejor campaña (verde) y tu peor (rojo) y cuánto se movió el precio. Cuanto más separadas las líneas, más pesó el precio.",
       [el("div", { "class": "tc-multiples" }, graficos)]);
   }
 
   // 2. Cascada del margen de una campaña: ingreso al precio esperado, escalón del precio, comisión, costos y margen final.
   function opcionCascada(r, t, h) {
     var EC = raiz.TESIS_EC, tm = EC.tema(), c = colores(), k = r.detalle[t].cascada[h], f = base().formato;
-    var cats = ["Ingreso al precio esperado", "Sorpresa de precio", "Comisión", "Costos", "Margen final"];
+    var cats = ["Ingreso al precio esperado", "Variación del precio", "Comisión", "Costos", "Margen final"];
     var a = k.ingreso, b = a + k.precio, d = b - k.comision, e = d - k.costos;
     var filas = [[0, 0, a, c.neutro, f.aplicar("usd", a)], [1, a, b, k.precio >= 0 ? c.gana : c.pierde, signo(k.precio)], [2, b, d, c.neutro, k.comision ? "−" + f.aplicar("usd", k.comision) : "0"],
       [3, d, e, c.neutro, "−" + f.aplicar("usd", k.costos)], [4, 0, e, c.cobertura, f.aplicar("usd", e)]];
@@ -363,8 +367,8 @@
       elegidas.forEach(function (x, i) {
         var k = r.detalle[x.t].cascada, h = estado.h, a = k[0].precio, b = k[h].precio;
         lecturas[i].textContent = h === 0
-          ? "Sin cubrir, la sorpresa de precio de " + r.detalle[x.t].campana + " movió tu margen " + signo(a) + " USD y terminaste con " + f.aplicar("usd", k[0].margen) + " USD."
-          : "Cubriendo el " + Math.round(h * 100) + " %, ese escalón pasa de " + signo(a) + " a " + signo(b) + " USD (más una comisión de " + f.aplicar("usd", k[h].comision) + " USD) y terminás con " + f.aplicar("usd", k[h].margen) + " USD, " +
+          ? "Sin cubrir, la variación del precio de " + r.detalle[x.t].campana + " movió tu margen " + signo(a) + " USD y terminaste con " + f.aplicar("usd", k[0].margen) + " USD."
+          : "Cubriendo el " + Math.round(h * 100) + " %, ese efecto pasa de " + signo(a) + " a " + signo(b) + " USD (más una comisión de " + f.aplicar("usd", k[h].comision) + " USD) y terminás con " + f.aplicar("usd", k[h].margen) + " USD, " +
             signo(k[h].margen - k[0].margen) + " USD frente a vender a cosecha.";
       });
     };
@@ -391,8 +395,8 @@
     });
     pintarLecturas();
     var dp = r.detalle[e0.iPeor];
-    var titulo = "En " + dp.campana + " la sorpresa de precio te " + (dp.cascada[0].precio < 0 ? "restó " + f.aplicar("usd", -dp.cascada[0].precio) : "sumó " + f.aplicar("usd", dp.cascada[0].precio)) + " USD; cubriéndote, ese escalón se achica";
-    return bloque(titulo, "Cómo se lee: se parte del ingreso que esperabas al sembrar, se suma o resta lo que movió el precio, se descuentan la comisión (si cubrías) y los costos, y queda el margen. Tocá los botones: al cubrir más, el escalón del precio se achica, porque queda solo la base (Sc − Fc).",
+    var titulo = "En " + dp.campana + " la variación del precio te " + (dp.cascada[0].precio < 0 ? "restó " + f.aplicar("usd", -dp.cascada[0].precio) : "sumó " + f.aplicar("usd", dp.cascada[0].precio)) + " USD; cubriéndote, ese efecto se achica";
+    return bloque(titulo, "Cómo se lee: se parte del ingreso que esperabas al sembrar, se suma o resta lo que movió el precio, se descuentan la comisión (si cubrías) y los costos, y queda el margen. Tocá los botones: al cubrir más, el efecto del precio se achica.",
       [el("div", { "class": "tc-interruptores", role: "group", "aria-label": "Cuánto cubrir" }, botones), el("div", { "class": "tc-multiples" }, tarjetas)]);
   }
 
@@ -401,11 +405,11 @@
   // Todo sale de motor.calcularCaso (soloPrecioCon = sorpresa con rinde fijo; sorpresaCon = con el rinde cosechado) y de motor.desvioMuestral:
   // el mismo desvío que muestra «Probá variantes» (motor.mezcla). Ninguna fórmula nueva.
   // ---------------------------------------------------------------------------------------
-  var UMBRAL_HIPOTESIS = 0.5; // la hipótesis de la tesis pide bajar el riesgo más de 50 %
+  var UMBRAL_HIPOTESIS = 0.5; // la meta pide bajar el riesgo más de 50 %
 
   // hs: lista de { rotulo, h } donde h es un número (todos los cultivos) o { cultivo: h }.
   function volatilidad(datos, zona, ha, hs) {
-    datos = datos || raiz.TESIS_DATOS;
+    datos = raiz.TESIS_MOTOR.datosProductor(datos || raiz.TESIS_DATOS);
     var m = raiz.TESIS_MOTOR, comision = datos.parametros.comision.v, cultivos = Object.keys(ha);
     var casos = {};
     cultivos.forEach(function (c) { casos[c] = porCampana(m.casosDe(datos, c, zona)); });
@@ -503,6 +507,7 @@
   function seccionVolatilidad(r, ctx, ha) {
     var f = base().formato;
     var v = volatilidad(raiz.TESIS_DATOS, r.zona, ha, niveles3(ctx)), o = v.origen, sin = v.niveles[0];
+    var num = function (valor, formato, origen) { return numBase(valor, formato, origen, EXPLICA_RIESGO); };
     var cien = v.niveles.filter(function (n) { return n.h === 1; })[0] || v.niveles[v.niveles.length - 1];
     var cuanto = function (n) { return n.reduccion === null ? "—" : n.reduccion > 0 ? "Baja " + f.aplicar("porcentaje", n.reduccion) : "No baja"; };
     var nodo = el("div", { "class": "tc-grafico tc-grafico-volatilidad", role: "img",
@@ -512,27 +517,27 @@
     var significa = el("aside", { "class": "tc-significa" }, [
       el("h5", null, "Qué significa"),
       el("dl", { "class": "tc-significa-lista" }, [
-        idea("Volatilidad", "Cuánto puede moverse tu margen de un año a otro por el precio."),
-        idea("Riesgo (en la tesis)", "El desvío del margen real respecto del proyectado entre campañas: cuánto se aleja, en general, lo que cobrás de lo que planeaste."),
-        idea("Sorpresa de precio", "La diferencia entre el precio que cobrás a cosecha (Sc) y el que esperabas al sembrar (Fs)."),
-        idea("Base", "Sc − Fc: lo único del precio que queda abierto cuando te cubrís.")
+        idea("Variación del margen", "Cuánto puede moverse tu margen de un año a otro por el precio."),
+        idea("Riesgo", "Cuánto se alejó, en general, lo que cobraste de lo que habías planeado, de una campaña a otra."),
+        idea("Variación del precio", "La diferencia entre el precio que cobrás a cosecha y el que esperabas al sembrar."),
+        idea("Base", "La diferencia entre el precio de tu zona y el del contrato a cosecha: es lo único que queda abierto cuando te cubrís.")
       ]),
       el("p", { "class": "tc-nota" }, ["Con tus números: sin cubrir, tu margen se movió ", num(sin.rango, "usd", o), " USD entre el peor año (", sin.campanaPeor, ", ", num(sin.peor, "usd", o), " USD frente a lo proyectado) y el mejor (",
         sin.campanaMejor, ", ", num(sin.mejor, "usd", o), " USD). Cubriendo " + (cien.h === 1 ? "el 100 %" : cien.rotulo.toLowerCase()) + ", ese recorrido fue de ", num(cien.rango, "usd", o), " USD."])
     ]);
     var meta = Math.round(v.umbral * 100) + " %";
-    var leyenda = el("p", { "class": "tc-leyenda" }, [el("span", null, "Cómo se lee el riesgo:"), simboloRiesgo("alto"), el("span", null, "sin cubrir, o cubrir no bajó el desvío"),
-      simboloRiesgo("medio"), el("span", null, "bajó el desvío, pero menos de " + meta), simboloRiesgo("bajo"), el("span", null, "bajó " + meta + " o más (la meta de la hipótesis de la tesis)")]);
+    var leyenda = el("p", { "class": "tc-leyenda" }, [el("span", null, "Cómo se lee el riesgo:"), simboloRiesgo("alto"), el("span", null, "sin cubrir, o cubrir no bajó el riesgo"),
+      simboloRiesgo("medio"), el("span", null, "bajó el riesgo, pero menos de " + meta), simboloRiesgo("bajo"), el("span", null, "bajó " + meta + " o más (la meta)")]);
     var filasTabla = v.niveles.map(function (n) {
       return el("tr", { "data-nivel": n.nivel }, [el("th", { scope: "row" }, [n.rotulo, el("br"), simboloRiesgo(n.nivel)]), el("td", null, [num(n.desvio, "usd", o), " USD"]),
         el("td", null, n === sin ? "—" : cuanto(n)), el("td", null, [num(n.peor, "usd", o), " a ", num(n.mejor, "usd", o)]), el("td", null, num(n.media, "usd", o))]);
     });
-    var cab = ["Cobertura y riesgo", "Desvío de la sorpresa (USD)", "Frente a sin cubrir", "Peor a mejor año (USD)", "Sorpresa promedio (USD)"];
-    return el("section", { "class": "tarjeta tc-bloque tc-historia tc-volatilidad" }, [el("h4", null, "Cuánto se movió tu margen: la volatilidad que asumís"),
-      el("p", { "class": "tc-relato" }, "Para vos, no cubrir es depender del precio que haya el día de la cosecha: cada año tu margen se mueve con la sorpresa de precio. Cubrir es fijar una parte del precio de antemano y tener un resultado más previsible. Esto es lo que pasó en tu zona con tus cultivos."),
+    var cab = ["Cobertura y riesgo", "Cuánto varió (USD)", "Frente a sin cubrir", "Peor a mejor año (USD)", "Diferencia promedio con lo proyectado (USD)"];
+    return el("section", { "class": "tarjeta tc-bloque tc-historia tc-volatilidad" }, [el("h4", null, "Cuánto se movió tu margen de un año a otro"),
+      el("p", { "class": "tc-relato" }, "No cubrir es depender del precio que haya el día de la cosecha: cada año tu margen se mueve con el precio. Cubrir es fijar una parte de antemano y tener un resultado más previsible. Esto es lo que pasó en tu zona con tus cultivos."),
       significa, nodo, leyenda,
       el("div", { "class": "tc-scroll" }, el("table", { "class": "tc-tabla-vol" }, [el("thead", null, el("tr", null, cab.map(function (t) { return el("th", null, t); }))), el("tbody", null, filasTabla)])),
-      el("p", { "class": "tc-lectura" }, "Cómo se lee: cada punto es una campaña (" + v.campanas[0] + " a " + v.campanas[v.campanas.length - 1] + ") y la franja va del peor al mejor año. Sin cubrir asumís toda la sorpresa de precio de cada año, por eso los puntos están dispersos (volatilidad alta). Al cubrir fijás parte del precio y solo queda la base (Sc − Fc), por eso los resultados se amontonan. Cubrir no necesariamente te hace ganar más en promedio (mirá la sorpresa promedio): te hace depender menos de cómo venga el precio. El desvío usa el rinde fijo de planteo, como el resto de «Tu caso» y la hipótesis de la tesis; en «Probá variantes» se usa el rinde que se cosechó, que también se mueve y no se cubre, por eso ahí la baja es menor. Es una explicación de lo que pasó, no una recomendación.")]);
+      el("p", { "class": "tc-lectura" }, "Cómo se lee: cada punto es una campaña (" + v.campanas[0] + " a " + v.campanas[v.campanas.length - 1] + ") y la franja va del peor al mejor año. Sin cubrir tomás todo el movimiento del precio de cada año, por eso los puntos están dispersos. Al cubrir fijás parte del precio y los resultados se amontonan. Cubrir no necesariamente te hace ganar más en promedio: te hace depender menos de cómo venga el precio. Acá se usa el rinde de referencia de tu zona; en «Probá variantes» se usa el rinde que se cosechó, que también se mueve y no se cubre, por eso allá la baja es menor. Es una explicación de lo que pasó, no una recomendación.")]);
   }
 
   // 3. Por campaña: cuánto más (o menos) habrías tenido cubriendo la mitad o todo, frente a vender a cosecha.
@@ -567,7 +572,7 @@
     var nodo = el("div", { "class": "tc-grafico tc-grafico-chico", role: "img", "aria-label": "Peso de cada cultivo en tu margen bruto promedio" });
     nodos.pendientes.push({ clave: "dona", nodo: nodo, opcion: function () { return opcionDona(r); } });
     return bloque(mayor.cultivo + " aporta el " + base().formato.aplicar("porcentaje", mayor.parte) + " de tu margen bruto promedio",
-      "Cómo se lee: cada porción es lo que aporta un cultivo al margen bruto promedio de las seis campañas sin cubrir, con tus hectáreas y el rinde fijo de la tesis.", [nodo]);
+      "Cómo se lee: cada porción es lo que aporta un cultivo al margen bruto promedio de las seis campañas sin cubrir, con tus hectáreas y el rinde de referencia de tu zona.", [nodo]);
   }
 
   function seccionBarras(r) {
@@ -613,7 +618,7 @@
       el("p", { "class": "tc-lista" }, r.cultivos.map(function (c) {
         return el("span", { "class": "tc-cultivo" }, c.cultivo + " · " + f.aplicar("entero", c.ha) + " ha · " + f.aplicar("usd2", c.rinde) + " t/ha");
       })),
-      el("p", { "class": "tc-nota" }, "Son " + f.aplicar("entero", r.hectareas) + " ha en total. Los rindes son los de planteo de la zona (rinde fijo), como mide la tesis."),
+      el("p", { "class": "tc-nota" }, "Son " + f.aplicar("entero", r.hectareas) + " ha en total. Los rindes son los de referencia de tu zona, los mismos todos los años."),
       el("div", { "class": "tc-grandes" }, [
         grande("Margen bruto total promedio, sin cubrir", "tc-prom", e0.media),
         grande("Mejor campaña: " + e0.campanaMejor, "tc-mejor", e0.mejor),
@@ -651,11 +656,11 @@
 
     cont.appendChild(anim(el("section", { "class": "tc-bloque" }, [
       el("h3", { "class": "tc-seccion" }, "Dos estrategias para tu campo"),
-      el("p", { "class": "tc-nota" }, "Con tus hectáreas, tus cultivos y tu zona, y los datos de la tesis. Todo frente a vender a cosecha."),
+      el("p", { "class": "tc-nota" }, "Con tus hectáreas, tus cultivos y tu zona. Todo frente a vender a cosecha."),
       el("div", { "class": "tc-estrategias" }, [tarjeta(r, 1), tarjeta(r, 0.5)])
     ])));
     if (vista) cont.appendChild(anim(seccionPuente(vista, o)));
-    cont.appendChild(el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, AVISO), " Los márgenes son brutos, con rinde fijo y comisión de " + String(r.comision * 100).replace(".", ",") + " %."]));
+    cont.appendChild(el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, AVISO), " Los márgenes son brutos, con el rinde de referencia de tu zona y una comisión de " + String(r.comision * 100).replace(".", ",") + " %."]));
   }
 
   function montar(contenedor) {

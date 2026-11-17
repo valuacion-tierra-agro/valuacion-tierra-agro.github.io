@@ -58,7 +58,7 @@
 
   function esFinito(x) { return typeof x === "number" && isFinite(x); }
 
-  function datosDe(d) { return d || raiz.TESIS_DATOS; }
+  function datosDe(d) { return motor().datosProductor(d || raiz.TESIS_DATOS); }
   function motor() { return raiz.TESIS_MOTOR; }
 
   // Lee un número con coma decimal es-AR: «166,96», «6.915,49», «1.500». El punto sólo separa miles bien puestos.

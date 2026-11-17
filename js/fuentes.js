@@ -276,7 +276,8 @@
     "La cobertura se hace una sola vez, al sembrar, y se mantiene hasta la cosecha.",
     "El desvío del rinde tiene varias causas, como el manejo y las plagas.",
     "El valor de la tierra es el promedio provincial del año de cosecha.",
-    "No se usa la hoja 6_Retorno_Total del libro de CAPM porque tiene pegada la rentabilidad calculada sin el costo de cosecha."
+    "No se usa la hoja 6_Retorno_Total del libro de CAPM porque tiene pegada la rentabilidad calculada sin el costo de cosecha.",
+    "Cuando una zona no tiene campañas de un cultivo, el simulador usa precios, rindes y costos de la zona vecina más cercana que sí lo tiene (Centro Oeste BA: soja y maíz de Norte BA / Sur SF; Sudeste de Córdoba: soja y maíz de Sur de Córdoba; Sur de Córdoba: trigo de Sudeste de Córdoba), con el valor de la tierra de la zona elegida. Los resultados de la tesis no usan estos datos."
   ];
 
   // La comisión y la proporción cubierta (h) del Excel, como celdas con su origen en Parametros.
@@ -609,6 +610,9 @@
     nodos.volver.hidden = a.cargado;
     contenedor.appendChild(nodos.volver);
     contenedor.appendChild(el("p", { "class": "df-intro" },
+      "Los datos salen del trabajo final de la Licenciatura en Finanzas (UADE) y de fuentes públicas: los precios de los futuros, de A3 Mercados y la Bolsa de Comercio de Rosario; " +
+      "los rindes, del Ministerio de Agricultura (MAGyP); los costos y el valor de la tierra, de Márgenes Agropecuarios (el valor, de la Compañía Argentina de Tierras); " +
+      "el costo de oportunidad, de los bonos del Tesoro de Estados Unidos y del riesgo país (EMBI); y los límites de las zonas, del IGN. " +
       "Acá está todo lo que usa el simulador: los precios, el valor de la tierra y los datos de los Excels de la tesis. Tocá un título para abrirlo. " +
       "Tocá o hacé clic en cualquier número subrayado para ver de qué archivo, hoja y celda sale."));
     // Tres desplegables, cerrados al abrir. Precios y Valor de la tierra los llenan sus módulos (alojar); «Datos y estadística» trae el resto.

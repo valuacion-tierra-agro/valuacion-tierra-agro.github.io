@@ -230,7 +230,9 @@
     var c = datos && datos.campos && datos.campos[campo];
     if (!c) throw new Error("Campo desconocido «" + campo + "»: no está en el mapa de origen de datos.js");
     var archivo = datos.meta.archivos[c.archivo].nombre;
-    return archivo + " › " + c.hoja + " › " + c.columna + caso[c.fila];
+    // En un caso prestado (datosProductor) el valor de la tierra sale de la fila de la zona propia, no de la del caso copiado.
+    var fila = campo === "v" && caso.filaV !== undefined ? caso.filaV : caso[c.fila];
+    return archivo + " › " + c.hoja + " › " + c.columna + fila;
   }
 
   // Campos que se comparan contra el Excel (14 de RR_Margenes y 3 de Datos_Completos):
@@ -402,6 +404,47 @@
     return ORDEN_CULTIVOS.filter(function (cultivo) {
       return datos.casos.some(function (c) { return c.cultivo === cultivo && c.zona === zona; });
     });
+  }
+
+  // Zonas sin campañas de algún cultivo: usan los de la zona vecina más cercana que sí lo tiene (distancia entre centroides).
+  var PRESTAMOS = [
+    { zona: "Centro Oeste BA", cultivo: "Soja", de: "Norte BA / Sur SF" },
+    { zona: "Centro Oeste BA", cultivo: "Maíz", de: "Norte BA / Sur SF" },
+    { zona: "Sudeste de Córdoba", cultivo: "Soja", de: "Sur de Córdoba" },
+    { zona: "Sudeste de Córdoba", cultivo: "Maíz", de: "Sur de Córdoba" },
+    { zona: "Sur de Córdoba", cultivo: "Trigo", de: "Sudeste de Córdoba" }
+  ];
+  var CAMPOS_DE_R = ["rProyectada", "rRealSin", "rRealCon", "sorpresaRSin", "sorpresaRCon"];
+  var cacheProductor = typeof WeakMap === "function" ? new WeakMap() : null;
+
+  // «Datos del productor»: los datos + casos prestados de la zona vecina (con el valor de la tierra de la zona propia). Copia nueva:
+  // nunca modifica datos. Sólo la usan los flujos del productor (Simulá tu campaña, Tu caso, Probá variantes); la tesis usa datos tal cual.
+  // Los campos excel.* que dependen de v (las rentabilidades y sorpresas en R) no valen para un caso prestado: se borran.
+  function datosProductor(datos) {
+    datos = datos || raiz.TESIS_DATOS;
+    if (!datos || !Array.isArray(datos.casos) || datos.productor) return datos;
+    var previo = cacheProductor && cacheProductor.get(datos);
+    if (previo && previo.largo === datos.casos.length && previo.casos === datos.casos) return previo.copia;
+    var nuevos = [];
+    PRESTAMOS.forEach(function (p) {
+      if (datos.casos.some(function (c) { return c.cultivo === p.cultivo && c.zona === p.zona; })) return;
+      var propios = {};
+      datos.casos.forEach(function (c) { if (c.zona === p.zona && propios[c.campana] === undefined && typeof c.v === "number") propios[c.campana] = c; });
+      datos.casos.forEach(function (c) {
+        if (c.cultivo !== p.cultivo || c.zona !== p.de || !propios[c.campana]) return;
+        var copia = JSON.parse(JSON.stringify(c));
+        copia.id = p.cultivo + "|" + p.zona + "|" + c.campana;
+        copia.zona = p.zona;
+        copia.v = propios[c.campana].v;
+        copia.filaV = propios[c.campana].fila;
+        copia.prestadoDe = p.de;
+        CAMPOS_DE_R.forEach(function (k) { if (copia.excel) delete copia.excel[k]; });
+        nuevos.push(copia);
+      });
+    });
+    var salida = Object.assign({}, datos, { casos: datos.casos.concat(nuevos), productor: true });
+    if (cacheProductor) cacheProductor.set(datos, { largo: datos.casos.length, casos: datos.casos, copia: salida });
+    return salida;
   }
 
   // Zonas del cultivo, en el orden en que aparecen en datos.casos.
@@ -702,6 +745,7 @@
     cultivosDe: cultivosDe,
     zonasDe: zonasDe,
     casosDe: casosDe,
+    datosProductor: datosProductor,
     riesgoZona: riesgoZona,
     riesgoCultivo: riesgoCultivo,
     curvaCobertura: curvaCobertura,

@@ -8,9 +8,9 @@
   "use strict";
 
   var EXPLICACIONES = [
-    ["Costo de oportunidad", "Es lo que dejás de ganar por tener tu plata en la tierra en vez de en otra inversión de riesgo parecido. Si la tierra rinde menos que esa alternativa, el costo de oportunidad le gana. Por eso se compara la rentabilidad de la tierra (R) con una tasa de referencia, que llamamos k."],
-    ["CAPM", "Es el método que usan las finanzas para calcular k, la tasa que un inversor exige por el riesgo que corre. Acá: k = tasa libre de riesgo + β × prima de mercado + riesgo país. La tasa libre de riesgo es lo que paga un bono del Tesoro de Estados Unidos; β mide cuánto se mueve el negocio agrícola respecto del mercado; la prima de mercado es el extra que pagan las acciones sobre esa tasa."],
-    ["Riesgo país (EMBI)", "Es la sobretasa que paga Argentina, por encima de Estados Unidos, para que le presten plata. Lo mide el índice EMBI. En el CAPM se suma a k porque invertir en Argentina exige ese plus. Cuando el riesgo país es alto, k es alto."]
+    ["Costo de oportunidad", "Es lo que dejás de ganar por tener tu plata en la tierra en vez de en otra inversión de riesgo parecido. Por eso se compara lo que rinde la tierra con una tasa de referencia: la que exigiría un inversor por ese riesgo."],
+    ["Cómo se calcula (CAPM)", "Es el método de las finanzas para calcular esa tasa: tasa libre de riesgo + sensibilidad al mercado × prima de mercado + riesgo país. La tasa libre es lo que paga un bono del Tesoro de Estados Unidos; la sensibilidad (β) mide cuánto se mueve el negocio agrícola respecto del mercado; la prima es el extra que pagan las acciones sobre esa tasa."],
+    ["Riesgo país (EMBI)", "Es la sobretasa que paga Argentina, por encima de Estados Unidos, para que le presten plata. Lo mide el índice EMBI. Se suma porque invertir en Argentina exige ese plus: con riesgo país alto, el costo de oportunidad es alto."]
   ];
 
   var nodos = {};
@@ -20,7 +20,26 @@
   function base() { return raiz.TESIS_APP; }
   function M() { return raiz.TESIS_MOTOR; }
   function el(e, a, c) { return base().el(e, a, c); }
-  function num(v, f, o) { return base().numero(v, f, o); }
+  // Frase en simple para la ventanita «De dónde sale este número» (el archivo y la celda siguen en data-origen y en «Datos y fuentes»).
+  var EXPLICAS = [
+    [/^promedio simple de R con cobertura/, "El promedio de la rentabilidad de la tierra con cobertura en los tres cultivos y todas las zonas."],
+    [/^promedio simple de R sin cobertura/, "El promedio de la rentabilidad de la tierra sin cobertura en los tres cultivos y todas las zonas."],
+    [/^tasa libre \+ β × prima/, "La tasa libre de riesgo más la sensibilidad del negocio agrícola por la prima de mercado."],
+    [/^β × prima/, "La sensibilidad del negocio agrícola por la prima de mercado."],
+    [/^R sin cobertura − k con riesgo país/, "La rentabilidad sin cobertura menos el costo de oportunidad con riesgo país."],
+    [/^R sin cobertura − k sin riesgo país/, "La rentabilidad sin cobertura menos el costo de oportunidad sin riesgo país."],
+    [/^años con R < k/, "Los años en que la rentabilidad quedó por debajo del costo de oportunidad."],
+    [/^promedio de \(R − k\)/, "El promedio de la diferencia entre la rentabilidad y el costo de oportunidad."]
+  ];
+  function explicar(origen, explica) {
+    if (explica) return explica;
+    if (typeof origen !== "string" || origen === "") return null;
+    if (origen.indexOf(" — parte de: ") < 0) return base().explicarOrigen(origen);
+    var formula = origen.slice(0, origen.indexOf(" — parte de: "));
+    for (var i = 0; i < EXPLICAS.length; i++) if (EXPLICAS[i][0].test(formula)) return EXPLICAS[i][1];
+    return base().explicarOrigen(origen);
+  }
+  function num(v, f, o, explica) { return base().numero(v, f, o, { explica: explicar(o, explica) }); }
 
   // ---------------------------------------------------------------------------------------
   // Cálculo (sin DOM)
@@ -79,10 +98,10 @@
     return {
       categorias: vista.anios.map(String),
       series: [
-        { nombre: "R con cobertura", clave: "rCon", valores: col("rCon") },
-        { nombre: "R sin cobertura", clave: "rSin", valores: col("rSin") },
-        { nombre: "k con riesgo país (EMBI)", clave: "kCon", valores: col("kCon") },
-        { nombre: "k sin riesgo país", clave: "kSin", valores: col("kSin") }
+        { nombre: "Rentabilidad con cobertura", clave: "rCon", valores: col("rCon") },
+        { nombre: "Rentabilidad sin cobertura", clave: "rSin", valores: col("rSin") },
+        { nombre: "Costo de oportunidad con riesgo país", clave: "kCon", valores: col("kCon") },
+        { nombre: "Costo de oportunidad sin riesgo país", clave: "kSin", valores: col("kSin") }
       ]
     };
   }
@@ -94,43 +113,42 @@
   function pintarComponentes(v) {
     var cont = nodos.componentes;
     base().vaciar(cont);
-    var cab = el("tr", null, [el("th", { scope: "col" }, "Componente de k")].concat(v.filas.map(function (f) { return el("th", { scope: "col" }, String(f.anio)); })));
-    var fila = function (titulo, clave, formato, origenDe) {
-      return el("tr", null, [el("th", { scope: "row" }, titulo)].concat(v.filas.map(function (f) { return el("td", null, num(f[clave], formato, origenDe(f))); })));
+    var cab = el("tr", null, [el("th", { scope: "col" }, "Componente del costo de oportunidad")].concat(v.filas.map(function (f) { return el("th", { scope: "col" }, String(f.anio)); })));
+    var fila = function (titulo, clave, formato, origenDe, explica) {
+      return el("tr", null, [el("th", { scope: "row" }, titulo)].concat(v.filas.map(function (f) { return el("td", null, num(f[clave], formato, origenDe(f), explica)); })));
     };
     var propio = function (c) { return function (f) { return f.origen[c]; }; };
     var calc = function (formula, claves) { return function (f) { return base().origenCalculado(formula, claves.map(function (c) { return f.origen[c]; })); }; };
     var filas = [
-      fila("Tasa libre de riesgo", "rf", "porcentaje", propio("rf")),
-      fila("β (sensibilidad al mercado)", "beta", "beta", propio("beta")),
-      fila("Prima de mercado", "erp", "porcentaje", propio("erp")),
-      fila("β × prima de mercado", "betaPorPrima", "porcentaje", calc("β × prima de mercado", ["beta", "erp"])),
-      fila("k sin riesgo país = tasa libre + β × prima", "kSin", "porcentaje", calc("tasa libre + β × prima de mercado", ["rf", "beta", "erp"])),
-      fila("Riesgo país (EMBI)", "embi", "porcentaje", propio("embi")),
-      fila("k con riesgo país = k sin riesgo país + EMBI", "kCon", "porcentaje", propio("k"))
+      fila("Tasa libre de riesgo", "rf", "porcentaje", propio("rf"), "Lo que paga un bono del Tesoro de Estados Unidos ese año."),
+      fila("β (sensibilidad al mercado)", "beta", "beta", propio("beta"), "Cuánto se mueve el negocio agrícola respecto del mercado."),
+      fila("Prima de mercado", "erp", "porcentaje", propio("erp"), "El extra que pagan las acciones sobre la tasa libre de riesgo."),
+      fila("Sensibilidad × prima de mercado", "betaPorPrima", "porcentaje", calc("β × prima de mercado", ["beta", "erp"])),
+      fila("Costo de oportunidad sin riesgo país (tasa libre + sensibilidad × prima)", "kSin", "porcentaje", calc("tasa libre + β × prima de mercado", ["rf", "beta", "erp"])),
+      fila("Riesgo país (EMBI)", "embi", "porcentaje", propio("embi"), "La sobretasa que paga Argentina por encima de Estados Unidos."),
+      fila("Costo de oportunidad con riesgo país (el anterior + riesgo país)", "kCon", "porcentaje", propio("k"), "El costo de oportunidad sin riesgo país más el riesgo país de ese año.")
     ];
     cont.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sec-tabla" }, [
-      el("caption", null, "Componentes de k por año (CAPM)"), el("thead", null, cab), el("tbody", null, filas)])));
-    cont.appendChild(el("p", { "class": "ayuda" }, ["La campaña 2025/26 no tiene k: el libro del CAPM llega hasta 2025. El β usado es el base (", num(v.filas[0].beta, "beta", v.filas[0].origen.beta),
-      "); en «Lo que pasó» › «Rentabilidad vs. K» está también la variante con β significativo (", num(v.betaSignificativo, "beta", v.origenBetaSignificativo), ")."]));
+      el("caption", null, "Componentes del costo de oportunidad por año (CAPM)"), el("thead", null, cab), el("tbody", null, filas)])));
+    cont.appendChild(el("p", { "class": "ayuda" }, ["La campaña 2025/26 no tiene costo de oportunidad: los datos del CAPM llegan hasta 2025. La sensibilidad (β) que se usa es de ", num(v.filas[0].beta, "beta", v.filas[0].origen.beta, "Cuánto se mueve el negocio agrícola respecto del mercado."), "."]));
   }
 
   function pintarTablaR(v) {
     var cont = nodos.tablaR;
     base().vaciar(cont);
-    var cab = el("tr", null, ["Año", "R con cobertura", "R sin cobertura", "k con riesgo país", "k sin riesgo país", "R sin cobertura − k con riesgo país", "R sin cobertura − k sin riesgo país"].map(function (t) { return el("th", { scope: "col" }, t); }));
+    var cab = el("tr", null, ["Año", "Rentabilidad con cobertura", "Rentabilidad sin cobertura", "Costo de oportunidad con riesgo país", "Costo de oportunidad sin riesgo país", "Rentabilidad sin cobertura menos costo con riesgo país", "Rentabilidad sin cobertura menos costo sin riesgo país"].map(function (t) { return el("th", { scope: "col" }, t); }));
     var filas = v.filas.map(function (f) {
       var oK = function (c) { return f.origen[c]; };
       return el("tr", null, [el("th", { scope: "row" }, String(f.anio)),
         el("td", null, num(f.rCon, "porcentaje", base().origenCalculado("promedio simple de R con cobertura de trigo, soja y maíz", f.origenRCon))),
         el("td", null, num(f.rSin, "porcentaje", base().origenCalculado("promedio simple de R sin cobertura (spot) de trigo, soja y maíz", f.origenRSin))),
-        el("td", null, num(f.kCon, "porcentaje", oK("k"))),
+        el("td", null, num(f.kCon, "porcentaje", oK("k"), "El costo de oportunidad sin riesgo país más el riesgo país de ese año.")),
         el("td", null, num(f.kSin, "porcentaje", base().origenCalculado("tasa libre + β × prima de mercado", [f.origen.rf, f.origen.beta, f.origen.erp]))),
         el("td", null, num(f.rSin - f.kCon, "puntos", base().origenCalculado("R sin cobertura − k con riesgo país", f.origenRSin.concat([f.origen.k])))),
         el("td", null, num(f.rSin - f.kSin, "puntos", base().origenCalculado("R sin cobertura − k sin riesgo país", f.origenRSin.concat([f.origen.rf, f.origen.beta, f.origen.erp]))))]);
     });
     cont.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sec-tabla" }, [
-      el("caption", null, "Rentabilidad R de la tesis contra k, por año"), el("thead", null, cab), el("tbody", null, filas)])));
+      el("caption", null, "Rentabilidad de la tierra contra el costo de oportunidad, por año"), el("thead", null, cab), el("tbody", null, filas)])));
   }
 
   function pintarLectura(v) {
@@ -140,19 +158,19 @@
     var n = v.filas.length;
     var o = function (formula) { return base().origenCalculado(formula, v.filas.reduce(function (acc, f) { return acc.concat(f.origenRCon, f.origenRSin, [f.origen.k, f.origen.rf, f.origen.beta, f.origen.erp]); }, [])); };
     var frase = function (titulo, bloque) {
-      return el("p", null, [titulo + ", la rentabilidad quedó por debajo de k en ", num(bloque.sinCobertura.debajo, "entero", o("años con R < k")), " de los " + n + " años sin cobertura y en ",
-        num(bloque.conCobertura.debajo, "entero", o("años con R < k")), " con cobertura. La brecha promedio (R − k) fue de ",
+      return el("p", null, [titulo + ", la rentabilidad quedó por debajo del costo de oportunidad en ", num(bloque.sinCobertura.debajo, "entero", o("años con R < k")), " de los " + n + " años sin cobertura y en ",
+        num(bloque.conCobertura.debajo, "entero", o("años con R < k")), " con cobertura. La diferencia promedio fue de ",
         num(bloque.sinCobertura.brechaMedia, "puntos", o("promedio de (R − k)")), " sin cobertura y de ", num(bloque.conCobertura.brechaMedia, "puntos", o("promedio de (R − k)")), " con cobertura."]);
     };
     var central = l.mensajeCentral === "sin-riesgo-pais-supera"
-      ? "Sin riesgo país, la tierra suele superar a k; con el riesgo país argentino, no."
-      : "El resultado depende del riesgo país: comparar R con k sin y con el EMBI da conclusiones distintas, como muestran las cifras de abajo.";
+      ? "Sin riesgo país, la tierra suele superar al costo de oportunidad; con el riesgo país argentino, no."
+      : "El resultado depende del riesgo país: comparar la rentabilidad con el costo de oportunidad sin y con riesgo país da conclusiones distintas, como muestran las cifras de abajo.";
     cont.appendChild(el("h3", null, "En palabras"));
     cont.appendChild(el("p", { "class": "sec-central" }, central));
     cont.appendChild(frase("Sin riesgo país", l.sinEmbi));
     cont.appendChild(frase("Con riesgo país", l.conEmbi));
-    cont.appendChild(el("p", { "class": "ayuda" }, "R es el promedio simple de los tres cultivos (trigo, soja y maíz), tomado de la referencia de la tesis: promedio de todas las zonas con el rinde de planteo. «Con cobertura» es con el " +
-      base().formato.porcentaje(v.hCobertura) + " cubierto con futuros. La comparación describe lo que pasó; no es una recomendación."));
+    cont.appendChild(el("p", { "class": "ayuda" }, "La rentabilidad es el promedio de los tres cultivos (trigo, soja y maíz) y de todas las zonas, con el rinde esperado de cada zona. «Con cobertura» es con el " +
+      base().formato.porcentaje(v.hCobertura) + " cubierto con futuros. Describe lo que pasó; no es una recomendación."));
   }
 
   function pintarGrafico(v) {
@@ -167,7 +185,39 @@
       kSin: { color: c("color-supuesto", "#33b1ff"), trazo: "dashed", simbolo: "triangle" }
     };
     var series = g.series.map(function (s) { var e = estilos[s.clave]; return { nombre: s.nombre, valores: s.valores, color: e.color, trazo: e.trazo, grosor: e.grosor, simbolo: e.simbolo }; });
-    ec.dibujar("costo", nodos.grafico, raiz.TESIS_EC.opcionDeLineas(t, g.categorias, series, function (x) { return base().formato.porcentaje(x); }, { escalar: false }));
+    var opcion = raiz.TESIS_EC.opcionDeLineas(t, g.categorias, series, function (x) { return base().formato.porcentaje(x); }, { escalar: false });
+    // Franja del efecto del riesgo país: entre k sin riesgo país y k con riesgo país. Una serie base invisible apilada con una serie de la
+    // diferencia con relleno (no se dibujan líneas propias: las líneas de k siguen siendo las de arriba).
+    var kSin = g.series[3].valores, kCon = g.series[2].valores;
+    var dif = kSin.map(function (x, i) { return typeof x === "number" && typeof kCon[i] === "number" ? kCon[i] - x : null; });
+    var base0 = kSin.map(function (x, i) { return dif[i] === null ? null : x; });
+    var NOMBRE_FRANJA = "Efecto del riesgo país";
+    var medio = -1;
+    dif.forEach(function (d, i) { if (d !== null && medio < 0 && i >= dif.length / 2 - 1) medio = i; });
+    if (medio < 0) medio = dif.reduce(function (m, d, i) { return d !== null ? i : m; }, -1);
+    var colorFranja = estilos.kCon.color;
+    opcion.series.push({ name: "base-franja", type: "line", stack: "franja", silent: true, symbol: "none", lineStyle: { opacity: 0 }, itemStyle: { opacity: 0 }, data: base0 });
+    opcion.series.push({ name: NOMBRE_FRANJA, type: "line", stack: "franja", symbol: "none", lineStyle: { opacity: 0 }, itemStyle: { color: colorFranja },
+      areaStyle: { color: colorFranja, opacity: 0.28 },
+      data: dif });
+    // Rótulo de la franja: un punto invisible a mitad de la franja con el texto.
+    opcion.series.push({ name: "rotulo-franja", type: "line", silent: true, symbol: "circle", symbolSize: 1, lineStyle: { opacity: 0 }, itemStyle: { color: "transparent" },
+      label: { show: true, position: "top", distance: 4, color: t.texto, fontFamily: t.fuente, fontSize: 12, formatter: "efecto del riesgo país" },
+      data: dif.map(function (d, i) { return i === medio && d !== null ? kSin[i] + d / 2 : null; }) });
+    opcion.legend.data = g.series.map(function (s) { return s.nombre; }).concat([NOMBRE_FRANJA]);
+    opcion.tooltip.formatter = function (ps) {
+      var lista = (Array.isArray(ps) ? ps : [ps]).filter(function (q) { return q.seriesName !== "base-franja" && q.seriesName !== "rotulo-franja"; });
+      if (!lista.length) return "";
+      return lista[0].axisValueLabel + lista.map(function (q) {
+        return "<br/>" + q.marker + " " + q.seriesName + ": " + (q.value === null || q.value === undefined ? "—" : base().formato.porcentaje(q.value));
+      }).join("");
+    };
+    opcion.grid.left = 92; opcion.grid.bottom = 56; opcion.grid.top = 64;
+    opcion.xAxis.name = "Año de cosecha"; opcion.xAxis.nameLocation = "middle"; opcion.xAxis.nameGap = 32;
+    opcion.xAxis.nameTextStyle = { color: t.texto, fontFamily: t.fuente };
+    opcion.yAxis.name = "Rentabilidad y costo de oportunidad (% anual)"; opcion.yAxis.nameLocation = "middle"; opcion.yAxis.nameGap = 62;
+    opcion.yAxis.nameTextStyle = { color: t.texto, fontFamily: t.fuente, fontSize: 11 };
+    ec.dibujar("costo", nodos.grafico, opcion);
   }
 
   // «Tu campo contra k»: la rentabilidad esperada que calculó «Simulá tu campaña» frente a k del último año del CAPM (con y sin riesgo país).
@@ -181,11 +231,11 @@
     var r = ctx.rSinCobertura;
     var origen = function (f) { return base().origenCalculado(f, [ult.origen.k, ult.origen.rf, ult.origen.beta, ult.origen.erp]); };
     cont.appendChild(el("h3", null, "Tu campo contra el costo de oportunidad"));
-    cont.appendChild(el("p", { "class": "sc-frase sc-frase-grande" }, ["Con tus datos, tu campo (zona " + ctx.zona + ") te deja ", num(r, "porcentaje", "R esperada de «Simulá tu campaña», vendiendo toda la cosecha a precio de cosecha"),
-      " al año sobre el valor de tu tierra. El costo de oportunidad k de " + ult.anio + " fue de ", num(ult.kSin, "porcentaje", origen("tasa libre + β × prima de mercado")), " sin riesgo país y de ",
-      num(ult.kCon, "porcentaje", ult.origen.k), " con riesgo país."]));
-    cont.appendChild(el("p", { "class": "sc-frase" }, r >= ult.kCon ? "Tu rentabilidad esperada supera a k incluso con el riesgo país."
-      : r >= ult.kSin ? "Tu rentabilidad esperada supera a k sin riesgo país, pero no a k con riesgo país." : "Tu rentabilidad esperada queda por debajo de k, con o sin riesgo país."));
+    cont.appendChild(el("p", { "class": "sc-frase sc-frase-grande" }, ["Con tus datos, tu campo (zona " + ctx.zona + ") te deja ", num(r, "porcentaje", "R esperada de «Simulá tu campaña», vendiendo toda la cosecha a precio de cosecha", "La rentabilidad esperada de tu campaña, vendiendo toda la cosecha a precio de cosecha."),
+      " al año sobre el valor de tu tierra. El costo de oportunidad de " + ult.anio + " fue de ", num(ult.kSin, "porcentaje", origen("tasa libre + β × prima de mercado")), " sin riesgo país y de ",
+      num(ult.kCon, "porcentaje", ult.origen.k, "El costo de oportunidad sin riesgo país más el riesgo país de ese año."), " con riesgo país."]));
+    cont.appendChild(el("p", { "class": "sc-frase" }, r >= ult.kCon ? "Tu rentabilidad esperada supera al costo de oportunidad incluso con el riesgo país."
+      : r >= ult.kSin ? "Tu rentabilidad esperada supera al costo de oportunidad sin riesgo país, pero no con riesgo país." : "Tu rentabilidad esperada queda por debajo del costo de oportunidad, con o sin riesgo país."));
   }
 
   function render() {
@@ -209,14 +259,15 @@
     nodos.tuya = el("div", { "class": "tarjeta sc-lectura sec-tuya" });
     nodos.tuya.hidden = true;
     nodos.componentes = el("div", { "class": "sec-tabla-bloque" });
-    nodos.grafico = el("div", { "class": "sc-grafico", role: "img", "aria-label": "Gráfico de líneas: rentabilidad R de la tierra, con y sin cobertura, contra k con riesgo país y k sin riesgo país, de 2021 a 2025" });
+    nodos.grafico = el("div", { "class": "sc-grafico", role: "img", "aria-label": "Gráfico de líneas: rentabilidad de la tierra, con y sin cobertura, contra el costo de oportunidad con y sin riesgo país, de 2021 a 2025" });
     nodos.tablaR = el("div", { "class": "sec-tabla-bloque" });
     nodos.lectura = el("div", { "class": "tarjeta sc-lectura" });
     nodos.cuadro = el("div", { "class": "sec-cuadro" }, [
-      nodos.tuya, nodos.componentes,
-      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Rentabilidad R contra k, con y sin riesgo país", "porcentaje por año", "año de cosecha"), nodos.grafico]),
-      nodos.tablaR, nodos.lectura,
-      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es asesoramiento financiero: k y R vienen de los Excels de la tesis y la comparación no predice lo que va a pasar."])
+      nodos.tuya,
+      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Rentabilidad contra costo de oportunidad, con y sin riesgo país", "rentabilidad y costo de oportunidad (% anual)", "año de cosecha"), nodos.grafico,
+        el("p", { "class": "ayuda" }, "La franja es lo que agrega el riesgo país al rendimiento que se le exige a la tierra; si tu rentabilidad queda debajo, la tierra rinde menos de lo que se le exige por su riesgo.")]),
+      nodos.componentes, nodos.tablaR, nodos.lectura,
+      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es asesoramiento financiero: la comparación no predice lo que va a pasar."])
     ]);
     contenedor.appendChild(nodos.cuadro);
     render();

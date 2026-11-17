@@ -214,7 +214,7 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* Subpestañas de «Lo que pasó (2020–2026)» */
+/* Subpestañas de «Histórico (2020–2026)» */
 #subnavegacion {
   display: flex;
   flex-wrap: wrap;
@@ -2476,6 +2476,10 @@ output {
   background-color: var(--color-superficie);
 }
 
+.pie-aviso {
+  margin: 0;
+}
+
 .pie-enlace {
   margin: 0.25rem 0 0;
 }
@@ -3482,6 +3486,16 @@ html {
     print-color-adjust: exact;
   }
 
+  /* Colores de gráficos y fichas tal cual, aunque el diálogo de impresión tenga «Gráficos de fondo» apagado. */
+  *,
+  *::before,
+  *::after,
+  svg,
+  svg * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .encabezado,
   #navegacion,
   #subnavegacion,
@@ -4065,3 +4079,9 @@ html {
 .sc-chip-cultivo[data-sin-datos]:hover { background: inherit; }
 .sc-chip-cultivo[data-sin-datos] .sc-chip-icono { filter: grayscale(1); }
 .sc-chip-cultivo[data-sin-datos]::after { content: "sin datos en esta zona"; font-size: .75rem; color: var(--color-texto-suave); margin-left: .5rem; }
+
+/* Línea de presentación de las pestañas con subpestañas (Histórico) */
+.grupo-intro {
+  margin: 0 0 1rem;
+  color: var(--color-texto-suave);
+}
