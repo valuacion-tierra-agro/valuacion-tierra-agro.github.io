@@ -1204,7 +1204,7 @@
       nodos.botonesH[cultivo] = {};
       C().PROPORCIONES.forEach(function (x) {
         var b = el("button", { type: "button", "class": "sc-chip", "aria-pressed": x === hp[cultivo] ? "true" : "false", id: "sc-sim-" + nombreCortoCultivo(cultivo) + "-" + Math.round(x * 100) }, pct(x));
-        b.addEventListener("click", function () { estado.hVer[cultivo] = x; repintarCobertura(); });
+        b.addEventListener("click", function () { cambiarCobertura(cultivo, x); });
         nodos.botonesH[cultivo][x] = b;
         fila.appendChild(b);
       });
@@ -1285,6 +1285,7 @@
     var min = Math.min.apply(null, todos), max = Math.max.apply(null, todos);
     var margen = (max - min) * 0.16 || 1;
     var peor = indiceDe(totalesCon, false), mejor = indiceDe(totalesCon, true);
+    var peorSin = indiceDe(totalesSin, false), mejorSin = indiceDe(totalesSin, true);
     var rango = totalesCon[mejor] - totalesCon[peor];
     var rangoSin = Math.max.apply(null, totalesSin) - Math.min.apply(null, totalesSin);
 
@@ -1297,16 +1298,17 @@
 
     V().actualizarPanel(panel, {
       colores: { metal: colorDe("color-metal", "#2b2b2b") },
-      silos: silos, parcela: parcela,
+      silos: silos, parcela: parcela, hayCobertura: cubre,
       medidor: {
         valor: reduccion, umbral: umbral, textoMarca: pct(umbral),
+        numeroNodo: reduccion === null ? texto("—") : numA("medidor", reduccion, "porcentaje", origenRed),
         colores: { texto: colorDe("color-texto", "#f4f4f4"), suave: colorDe("color-texto-suave", "#c6c6c6"), superficie: colorDe("color-superficie", "#262626"),
           fuente: colorDe("fuente-texto", "sans-serif"), alerta: colorDe("color-alerta", "#ff8389"), aviso: colorDe("color-aviso", "#f1c21b"), logro: colorDe("color-logro", "#42be65") },
         aria: reduccion === null ? "Riesgo que sacás: no se puede calcular" : "Riesgo que sacás: " + Math.round(Math.max(0, reduccion) * 100) + " %. Marca del " + pct(umbral) + ": umbral de la hipótesis."
           + (reduccion > umbral ? " Superás el umbral de la hipótesis." : "")
       },
       linea: {
-        campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: peor, mejor: mejor, min: min - margen, max: max + margen, impreso: imprimiendo,
+        campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: peor, mejor: mejor, peorSin: peorSin, mejorSin: mejorSin, min: min - margen, max: max + margen, impreso: imprimiendo,
         usdCon: totalesCon.map(function (t) { return fm().usd(t); }), usdSin: totalesSin.map(function (t) { return fm().usd(t); }),
         formatoEje: function (x) { return fm().usd(Math.round(x / 1000)) + " mil"; },
         colores: {
@@ -1328,36 +1330,67 @@
       ? " con el precio ya fijado, de las " + fm().entero(cob.toneladasProducidas) + " t que esperás cosechar."
       : " con el precio fijado: todavía no cubriste nada. Elegí un porcentaje en los botones de arriba."));
 
-    base().vaciar(panel.medidor.numero);
-    panel.medidor.numero.appendChild(reduccion === null ? texto("—") : numA("medidor", reduccion, "porcentaje", origenRed));
+    // Con cobertura hay dos versiones de cada frase (data-ver): el selector «Sin cubrirte» / «Con tu cobertura» muestra una u otra.
+    var version = function (padre, ver) { var s = el("span", cubre ? { "data-ver": ver } : null); padre.appendChild(s); return s; };
     base().vaciar(f.medidor);
     var marca = " La marca del " + pct(umbral) + " es el umbral de la hipótesis de la tesis.";
-    if (reduccion === null) f.medidor.appendChild(texto("No se puede calcular: sin cubrirte, tu rentabilidad no se mueve entre los seis años."));
-    else if (!cubre) f.medidor.appendChild(texto("Sin cubrirte no sacás riesgo. Con cobertura, el arco se llena según cuánto menos se mueve tu rentabilidad de un año a otro." + marca));
-    else if (reduccion < 0) f.medidor.appendChild(texto("Con esta cobertura tu rentabilidad se mueve más que sin cubrirte entre los seis años." + marca));
+    var fc = version(f.medidor, "con");
+    if (reduccion === null) fc.appendChild(texto("No se puede calcular: sin cubrirte, tu rentabilidad no se mueve entre los seis años."));
+    else if (!cubre) fc.appendChild(texto("Sin cubrirte no sacás riesgo. Con cobertura, el arco se llena según cuánto menos se mueve tu rentabilidad de un año a otro." + marca));
+    else if (reduccion < 0) fc.appendChild(texto("Con esta cobertura tu rentabilidad se mueve más que sin cubrirte entre los seis años." + marca));
     else {
-      f.medidor.appendChild(texto("Con tu cobertura, tu rentabilidad se mueve "));
-      f.medidor.appendChild(num(reduccion, "porcentaje", origenRed));
-      f.medidor.appendChild(texto(" menos de un año a otro que sin cubrirte." + marca));
+      fc.appendChild(texto("Con tu cobertura, tu rentabilidad se mueve "));
+      fc.appendChild(num(reduccion, "porcentaje", origenRed));
+      fc.appendChild(texto(" menos de un año a otro que sin cubrirte." + marca));
     }
+    if (cubre) version(f.medidor, "sin").appendChild(texto("Sin cobertura no sacás riesgo: tu rentabilidad se mueve de un año a otro como la del mercado." + marca));
 
     base().vaciar(f.linea);
-    f.linea.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
-    f.linea.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
-    f.linea.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
-    f.linea.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
-    f.linea.appendChild(texto(" USD) hay "));
-    f.linea.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
-    f.linea.appendChild(texto(" USD de diferencia" + (cubre ? "; sin cubrirte serían " : ".")));
+    var fl = version(f.linea, "con");
+    fl.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
+    fl.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
+    fl.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
+    fl.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
+    fl.appendChild(texto(" USD) hay "));
+    fl.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
+    fl.appendChild(texto(" USD de diferencia" + (cubre ? "; sin cubrirte serían " : ".")));
     if (cubre) {
-      f.linea.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
-      f.linea.appendChild(texto(" USD."));
+      fl.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
+      fl.appendChild(texto(" USD."));
+      var fs = version(f.linea, "sin");
+      fs.appendChild(texto("Sin cubrirte, entre el peor año (" + v.campanas[peorSin] + ", "));
+      fs.appendChild(num(totalesSin[peorSin], "usd", o("MB total del escenario " + v.campanas[peorSin] + " sin cobertura")));
+      fs.appendChild(texto(" USD) y el mejor (" + v.campanas[mejorSin] + ", "));
+      fs.appendChild(num(totalesSin[mejorSin], "usd", o("MB total del escenario " + v.campanas[mejorSin] + " sin cobertura")));
+      fs.appendChild(texto(" USD) hay "));
+      fs.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
+      fs.appendChild(texto(" USD de diferencia."));
     }
+  }
+
+  // Un botón de cobertura vuelve a dibujar todo el bloque «Tu propuesta» (los botones, los silos, los gráficos): el botón tocado se
+  // reemplaza por uno nuevo, se pierde el foco y la altura de la página cambia mientras se rearman los gráficos; el navegador (y el
+  // scroll suave) mueven entonces la página y la barra pegajosa termina tapando lo que se estaba mirando. Se guarda dónde estaba la
+  // página y se la deja exactamente ahí, y el foco vuelve al botón nuevo sin desplazar nada.
+  function cambiarCobertura(cultivo, x) {
+    var y = raiz.pageYOffset || 0;
+    estado.hVer[cultivo] = x;
+    repintarCobertura();
+    var volver = function () {
+      if (Math.abs((raiz.pageYOffset || 0) - y) > 1 && V()) V().fijarScroll(y);
+    };
+    volver();
+    var nuevo = nodos.botonesH && nodos.botonesH[cultivo] && nodos.botonesH[cultivo][x];
+    try { if (nuevo) nuevo.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+    volver();
+    if (typeof raiz.requestAnimationFrame === "function") raiz.requestAnimationFrame(function () { volver(); raiz.requestAnimationFrame(volver); });
+    if (typeof raiz.setTimeout === "function") raiz.setTimeout(volver, 300);
   }
 
   // Cambió la proporción que se mira: se repinta sólo lo que depende de ella.
   function repintarCobertura() {
     if (!ultimaVista) return;
+    if (V() && nodos.visual) V().reiniciarModo(nodos.visual);
     pintarPropuesta(ultimaVista);
     pintarFranja(ultimaVista);
     pintarDetalle(vistaVer());
@@ -1521,6 +1554,7 @@
     try { return typeof raiz.matchMedia === "function" && raiz.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; }
   }
 
+  var altoComparacion = 215;   // alto del gráfico de futuro contra spot: sigue a la cantidad de barras
   function dibujar(clave, nodo, opcion) {
     if (!raiz.echarts || !nodo) return;
     try {
@@ -1528,7 +1562,7 @@
       if (!g) { g = graficos[clave] = raiz.echarts.init(nodo, null, { renderer: "svg" }); }
       g.setOption(opcion, true);
       var ancho = clave === "escenarios" || clave === "comparacion";
-      g.resize(imprimiendo ? { width: ancho ? 690 : ANCHO_IMPRESION, height: clave === "comparacion" ? 215 : ancho ? 170 : ALTO_IMPRESION } : undefined);
+      g.resize(imprimiendo ? { width: ancho ? 690 : ANCHO_IMPRESION, height: clave === "comparacion" ? altoComparacion : ancho ? 170 : ALTO_IMPRESION } : undefined);
       // Para imprimir el dibujo tiene que estar terminado antes de que el navegador arme la hoja: no se espera al próximo cuadro.
       if (imprimiendo && typeof g.getZr === "function") g.getZr().refreshImmediately();
     } catch (e) {
@@ -1606,21 +1640,33 @@
     var spot = v.resultados[0], fut = v.resultados[1];
     var elegis = hUniforme(v.hPorCultivo);
     var conTuEleccion = elegis === null || (elegis > 0 && elegis < 1);
-    var seriesFut = [{ name: "Spot proyectado", color: cSin, valores: v.nombres.map(function (c) { return spot.porCultivo[c].mbHa; }) }];
-    if (conTuEleccion) seriesFut.push({ name: "Tu elección", color: cAcento, valores: v.nombres.map(function (c) { return v.usuario.porCultivo[c].mbHa; }) });
-    seriesFut.push({ name: "Futuro (100 % cubierto)", color: cCon, valores: v.nombres.map(function (c) { return fut.porCultivo[c].mbHa; }) });
+    // Barras horizontales: una fila por opción, con su nombre en el eje y el valor al final de la barra. Con varios cultivos las filas
+    // se agrupan bajo el nombre de cada uno. El alto del gráfico sigue a la cantidad de filas.
+    var opcionesFut = [{ nombre: "Spot proyectado", color: cSin, valor: function (c) { return spot.porCultivo[c].mbHa; } }];
+    if (conTuEleccion) opcionesFut.push({ nombre: "Tu elección", color: cAcento, valor: function (c) { return v.usuario.porCultivo[c].mbHa; } });
+    opcionesFut.push({ nombre: "Futuro 100 % cubierto", color: cCon, valor: function (c) { return fut.porCultivo[c].mbHa; } });
+    var variosCultivos = v.nombres.length > 1;
+    var filasFut = [];
+    v.nombres.forEach(function (c) {
+      if (variosCultivos) filasFut.push({ encabezado: true, texto: c });
+      opcionesFut.forEach(function (op) { filasFut.push({ texto: op.nombre, cultivo: c, color: op.color, valor: op.valor(c) }); });
+    });
+    var altoFila = imprimiendo ? 22 : 40, altoEncabezado = imprimiendo ? 20 : 30;
+    altoComparacion = Math.round(filasFut.reduce(function (t, f) { return t + (f.encabezado ? altoEncabezado : altoFila); }, 0) + (imprimiendo ? 14 : 24));
+    if (nodos.graficoComparacion && nodos.graficoComparacion.setAttribute) nodos.graficoComparacion.setAttribute("style", "height:" + altoComparacion + "px");
     dibujar("comparacion", nodos.graficoComparacion, {
-      animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: imprimiendo ? 74 : 70, bottom: 32 },
-      title: { text: conclusionFuturo(v), left: 0, top: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica + 1, fontWeight: 600, lineHeight: 18 },
-        backgroundColor: colorDe("color-superficie-2", "#393939"), padding: [6, 10], borderColor: cCon, borderWidth: 0 },
-      legend: { top: imprimiendo ? 44 : 42, right: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica }, inactiveColor: bordeFuerte },
-      tooltip: tooltipDelTema({ trigger: "item", formatter: function (q) { return q.seriesName + " · " + q.name + ": " + fm.usd(q.value) + " USD/ha"; } }),
-      xAxis: { type: "category", data: v.nombres, axisLabel: { color: txt.color, interval: 0 }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { show: false } },
-      yAxis: { type: "value", axisLabel: { color: suave, fontSize: chica, formatter: function (x) { return fm.usd(x); } }, splitLine: { lineStyle: { color: borde } } },
-      series: seriesFut.map(function (s) {
-        return { name: s.name, type: "bar", barMaxWidth: 46, itemStyle: { color: s.color }, data: s.valores,
-          label: { show: true, position: "top", color: txt.color, fontSize: chica, formatter: function (q) { return fm.usd(q.value); } } };
-      })
+      animation: anim, textStyle: txt, grid: { left: 8, right: imprimiendo ? 44 : 56, top: 6, bottom: 6, containLabel: true },
+      tooltip: tooltipDelTema({ trigger: "item", formatter: function (q) { var f = filasFut[q.dataIndex]; return f.texto + (variosCultivos ? " · " + f.cultivo : "") + ": " + fm.usd(f.valor) + " USD/ha"; } }),
+      xAxis: { type: "value", show: false, boundaryGap: [0, 0.12] },
+      yAxis: { type: "category", inverse: true, data: filasFut.map(function (f, i) { return String(i); }),
+        axisLabel: { interval: 0, color: txt.color, fontSize: chica + 1, margin: 12,
+          formatter: function (id) { var f = filasFut[+id]; return f.encabezado ? "{c|" + f.texto + "}" : "{o|" + f.texto + "}"; },
+          rich: { c: { color: txt.color, fontWeight: 700, fontSize: chica + 1, fontFamily: txt.fontFamily }, o: { color: txt.color, fontSize: chica + 1, fontFamily: txt.fontFamily } } },
+        axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { show: false } },
+      series: [{ type: "bar", barWidth: imprimiendo ? 14 : 22, data: filasFut.map(function (f) {
+        return f.encabezado ? { value: "-", itemStyle: { color: "transparent" }, label: { show: false } }
+          : { value: f.valor, itemStyle: { color: f.color }, label: { position: f.valor < 0 ? "left" : "right" } };
+      }), label: { show: true, color: txt.color, fontSize: chica + 1, fontWeight: 600, formatter: function (q) { return fm.usd(q.value); } } }]
     });
 
     var series = [{ h: 0, nombre: "0 % cubierto", color: cSin }, { h: 1, nombre: "100 % cubierto", color: cCon }];
@@ -1640,9 +1686,10 @@
         var degradado = { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: s.color + "66" }, { offset: 1, color: s.color + "00" }] };
         var o = { name: s.nombre, type: "line", symbolSize: 8, smooth: 0.25, itemStyle: { color: s.color }, lineStyle: { color: s.color, width: 3, type: s.discontinua ? "dashed" : "solid" },
           areaStyle: { color: degradado }, data: (s.escenario || v.escenarios[s.h]).r };
-        // El año clave (el peor sin cubrirte) queda resaltado en una banda.
-        if (k === 0) o.markArea = { silent: true, itemStyle: { color: colorDe("color-alerta", "#ff8389") + "26" }, label: { show: true, position: "insideTop", color: txt.color, fontSize: chica, formatter: "Peor año" },
-          data: [[{ xAxis: peorEsc - 0.4 }, { xAxis: peorEsc + 0.4 }]] };
+        // El año clave (el peor sin cubrirte) queda marcado con una línea vertical sobre su campaña.
+        if (k === 0) o.markLine = { silent: true, symbol: "none", lineStyle: { color: colorDe("color-alerta", "#ff8389"), type: "dashed", width: 1.5 },
+          label: { show: true, position: "end", color: colorDe("color-alerta", "#ff8389"), fontSize: chica, formatter: "Peor año sin cubrirte" },
+          data: [{ xAxis: v.campanas[peorEsc] }] };
         return o;
       })
     });
@@ -1653,7 +1700,7 @@
   // La conclusión del gráfico de futuro contra spot: cuánto más (o menos) deja cubrir todo con futuros, en USD por hectárea.
   function conclusionFuturo(v) {
     var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
-    return "Cubrir todo con futuros: " + signoUsd(d) + " USD/ha\n" + (d >= 0 ? "más" : "menos") + " que vender al spot proyectado";
+    return "Cubrir todo con futuros: " + signoUsd(d) + " USD/ha " + (d >= 0 ? "más" : "menos") + " que vender al spot proyectado.";
   }
 
   // Titulares y líneas de lectura de cada gráfico (los números salen de campana.js, con su origen al pasar el mouse).
@@ -1684,6 +1731,7 @@
     // Futuro contra spot
     var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
     var mejores = v.nombres.filter(function (c) { return v.resultados[1].porCultivo[c].mbHa > v.resultados[0].porCultivo[c].mbHa; });
+    h.futuro.conclusion.textContent = conclusionFuturo(v);
     frase(h.futuro.titular, ["Con futuros fijás el precio hoy; el spot proyectado es un supuesto del grupo, no un pronóstico."]);
     frase(h.futuro.lectura, [d >= 0 ? "Cubriendo todo, tu margen por hectárea sube " : "Cubriendo todo, tu margen por hectárea baja ", num(Math.abs(d), "usd", o("diferencia de MB por hectárea entre cubrir todo y no cubrir")),
       " USD" + (v.nombres.length > 1 ? "; en " + (mejores.length ? mejores.join(" y ").toLowerCase() + " el futuro rinde más que el spot." : "ningún cultivo el futuro rinde más que el spot.") : ".")]);
@@ -1693,8 +1741,8 @@
     var rango = function (r) { return [Math.min.apply(null, r), Math.max.apply(null, r)]; };
     var a = rango(rs0), b = rango(rs);
     var cubre = hayCobertura(v.hPorCultivo);
-    frase(h.escenarios.titular, ["Sin cubrirte, tu rentabilidad pasó de ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " a ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir")),
-      " según el año" + (cubre ? "; cubriendo, de " : "."), cubre ? num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")) : "", cubre ? " a " : "", cubre ? num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura")) : "", cubre ? "." : ""]);
+    frase(h.escenarios.titular, ["Sin cubrirte, tu rentabilidad quedaría entre ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " y ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir")),
+      ", según cómo se muevan los precios" + (cubre ? "; cubriendo, entre " : "."), cubre ? num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")) : "", cubre ? " y " : "", cubre ? num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura")) : "", cubre ? "." : ""]);
     frase(h.escenarios.lectura, ["Cada punto aplica a tu campo la sorpresa de precio de una campaña de la tesis (eje horizontal): cuanto más junto, menos riesgo."]);
   }
 
@@ -1834,12 +1882,13 @@
     var historia = function (clave, claveGrafico, titulo, eje, aria) {
       var titular = el("p", { "class": "sc-historia-titular" });
       var lectura = el("p", { "class": "sc-frase sc-historia-lectura" });
-      nodos.historias[clave] = { titular: titular, lectura: lectura };
-      return el("section", { "class": "tarjeta sc-historia sc-historia-" + clave }, [titular, contenedorDeGrafico(claveGrafico, titulo, eje, aria), lectura]);
+      var conclusion = clave === "futuro" ? el("p", { "class": "sc-historia-conclusion" }) : null;
+      nodos.historias[clave] = { titular: titular, lectura: lectura, conclusion: conclusion };
+      return el("section", { "class": "tarjeta sc-historia sc-historia-" + clave }, conclusion ? [titular, conclusion, contenedorDeGrafico(claveGrafico, titulo, eje, aria), lectura] : [titular, contenedorDeGrafico(claveGrafico, titulo, eje, aria), lectura]);
     };
     var hTorta = historia("torta", "graficoTorta", "Cultivos de la campaña (hectáreas)", null, "Gráfico de torta con la proporción de hectáreas de cada cultivo");
     var hCascada = historia("cascada", "graficoCascada", "Del ingreso al margen bruto", "USD de toda tu campaña; arriba, R sobre tu tierra", "Gráfico de cascada: ingreso bruto, costos, comisión y margen bruto de tu campaña");
-    var hFuturo = historia("futuro", "graficoComparacion", "Futuro contra spot proyectado, por cultivo", "margen bruto en USD por hectárea", "Gráfico de barras por cultivo: margen bruto por hectárea con spot proyectado, con tu cobertura y con futuro");
+    var hFuturo = historia("futuro", "graficoComparacion", "Futuro contra spot proyectado, por cultivo (margen bruto, USD por hectárea)", null, "Gráfico de barras por cultivo: margen bruto por hectárea con spot proyectado, con tu cobertura y con futuro");
     var hEscenarios = historia("escenarios", "graficoEscenarios", "Rentabilidad R en los seis escenarios históricos", "R (margen bruto ÷ valor de la tierra); eje horizontal: campaña cuya sorpresa de precio se aplica", "Gráfico de líneas: rentabilidad en cada escenario histórico, sin cubrir y cubierto");
     nodos.mas = el("div", { "class": "sc-mas", id: "sc-mas" }, [nodos.coberturas, nodos.proporciones, nodos.comparacion, nodos.riesgo, nodos.lectura]);
     nodos.mas.hidden = true;

@@ -14,7 +14,7 @@
 
   // Silo de chapa: techo cónico con alero y cuerpo cilíndrico (coordenadas del trazado; liquidfill lo escala a un cuadrado).
   var FORMA_SILO = "path://M2,52 L50,8 L98,52 L90,52 L90,184 L10,184 L10,52 Z";
-  var LADO_SILO = 180;               // px del cuadrado donde se dibuja cada silo
+  var LADO_SILO = 320;               // px del cuadrado donde se dibuja cada silo (en pantalla se escala al ancho que haya)
   var SEGMENTOS = 20;                // tramos del arco del medidor (de 5 % cada uno)
   var R_FUERA = 102, R_DENTRO = 68;  // radios del arco grueso
   var ANCHO_LINEA_IMPRESA = 400;     // px de la línea de tiempo en la hoja A4
@@ -129,6 +129,12 @@
     return lenis;
   }
 
+  // Deja la página en la posición vertical y (sin animación), también para el scroll suave, que guarda su propia posición.
+  function fijarScroll(y) {
+    try { if (lenis && typeof lenis.scrollTo === "function") lenis.scrollTo(y, { immediate: true, force: true }); } catch (e) { /* sin scroll suave */ }
+    try { if (typeof raiz.scrollTo === "function" && Math.abs((raiz.pageYOffset || 0) - y) > 1) raiz.scrollTo(0, y); } catch (e) { /* sin scroll */ }
+  }
+
   function fijarImpresion(valor) {
     imprimiendo = !!valor;
     if (imprimiendo) terminar();
@@ -169,11 +175,11 @@
     var relleno = el("div", { "class": "sc-silo-relleno" });
     var pct = el("span", { "class": "sc-silo-pct" });
     var caja = el("div", { "class": "sc-silo-caja", role: "img" }, [ec, el("div", { "class": "sc-silo-cuerpo" }, relleno), dibujoSilo()]);
-    // El porcentaje va al costado del silo (no encima) para que se vea el llenado del líquido.
+    // Todo en una tarjeta: el silo arriba y, debajo, el porcentaje cubierto y las toneladas (no encima del silo, para que se vea el llenado).
     var lado = el("div", { "class": "sc-silo-lado" }, [pct, el("span", { "class": "sc-silo-lado-rotulo" }, "cubierto")]);
     var texto = el("figcaption", { "class": "sc-silo-texto" });
     var nodo = el("figure", { "class": "sc-silo sc-cultivo-" + cultivo.toLowerCase().replace("í", "i"), "data-cultivo": cultivo },
-      [el("div", { "class": "sc-silo-fila" }, [caja, lado]), texto]);
+      [caja, el("div", { "class": "sc-silo-datos" }, [el("strong", { "class": "sc-silo-nombre" }, cultivo), lado, texto])]);
     return { nodo: nodo, caja: caja, ec: ec, relleno: relleno, pct: pct, texto: texto, chart: null, listo: false, visto: false, esperando: false, pendiente: null, cultivo: cultivo };
   }
 
@@ -204,6 +210,14 @@
 
   // Dibuja o actualiza un silo. Con movimiento, el primer dibujo arranca vacío y el líquido sube desde 0 cuando el silo entra en pantalla;
   // después, cada cambio de cobertura sólo mueve el nivel. Sin movimiento (o al imprimir) se dibuja de una vez, quieto.
+  // El dibujo de ECharts mide LADO_SILO px fijos: con un viewBox el SVG se escala al ancho de la tarjeta (el CSS le da 100 %).
+  function ajustarSvgSilo(silo) {
+    try {
+      var s = silo.ec.querySelector ? silo.ec.querySelector("svg") : null;
+      if (s) { s.setAttribute("viewBox", "0 0 " + LADO_SILO + " " + LADO_SILO); s.setAttribute("preserveAspectRatio", "xMidYMid meet"); }
+    } catch (e) { /* queda a su tamaño */ }
+  }
+
   function pintarSilo(silo, d, c) {
     var anim = !sinMovimiento();
     var esperar = anim && conVigia() && !silo.visto;
@@ -222,6 +236,7 @@
         silo.chart = E.init(silo.ec, null, { renderer: "svg", width: LADO_SILO, height: LADO_SILO });
         silo.listo = false;
       }
+      ajustarSvgSilo(silo);
       if (!silo.listo || imprimiendo || !anim) {
         silo.chart.setOption(opcionSilo(d, c, anim, esperar ? 0 : d.h), true);
         // Si liquidfill no está cargado, ECharts descarta la serie: se queda la barra CSS.
@@ -457,16 +472,18 @@
   }
 
   // valor: reducción del desvío (0 a 1, o null si no se puede calcular); umbral: la marca de la hipótesis (0 a 1).
-  function pintarMedidor(m, valor, umbral, textoMarca, ariaLabel, colores) {
+  // modo: «con» (el valor de tu cobertura) o «sin» (sin cubrirte no sacás riesgo: aguja en 0 %).
+  function pintarMedidor(m, valor, umbral, textoMarca, ariaLabel, colores, modo) {
+    var sinCubrir = modo === "sin";
     var a = punto(umbral, R_DENTRO - 8), b = punto(umbral, R_FUERA + 8), t = punto(umbral, R_FUERA + 14);
     m.marca.setAttribute("x1", a.x.toFixed(1)); m.marca.setAttribute("y1", a.y.toFixed(1));
     m.marca.setAttribute("x2", b.x.toFixed(1)); m.marca.setAttribute("y2", b.y.toFixed(1));
     m.rotulo.setAttribute("x", t.x.toFixed(1)); m.rotulo.setAttribute("y", (t.y - 2).toFixed(1));
     m.rotulo.textContent = "Umbral de la hipótesis: " + textoMarca;
-    m.nodo.setAttribute("aria-label", ariaLabel);
+    m.nodo.setAttribute("aria-label", sinCubrir ? "Riesgo que sacás sin cubrirte: 0 %. Marca del " + textoMarca + ": umbral de la hipótesis." : ariaLabel);
     var valido = typeof valor === "number" && isFinite(valor);
-    var f = valido ? Math.max(0, Math.min(1, valor)) : 0;
-    var supera = valido && valor > umbral;
+    var f = valido && !sinCubrir ? Math.max(0, Math.min(1, valor)) : 0;
+    var supera = valido && !sinCubrir && valor > umbral;
     m.nodo.setAttribute("data-valor", f.toFixed(4));
     m.nodo.setAttribute("data-supera", supera ? "1" : "0");
     if (supera) m.supera.removeAttribute("hidden"); else m.supera.setAttribute("hidden", "");
@@ -497,6 +514,29 @@
     }
   }
 
+  // El número grande del medidor: con tu cobertura es el que armó la página (con su origen); sin cubrirte, 0 %.
+  // Al cambiar de estado cuenta de un valor al otro (countUp), salvo «menos movimiento».
+  function ponerNumero(m, modo, animar) {
+    var cero = m.cero || (m.cero = el("span", { "class": "numero" }, base().formato.aplicar("porcentaje", 0)));
+    var final = modo === "sin" || !m.numeroNodo ? cero : m.numeroNodo;
+    var token = m.ficha = (m.ficha || 0) + 1;
+    var poner = function (n) { base().vaciar(m.numero); m.numero.appendChild(n); };
+    poner(final);
+    var CU = raiz.countUp && raiz.countUp.CountUp;
+    var v = m.valorNumero;
+    if (!animar || !CU || sinMovimiento() || typeof v !== "number" || !isFinite(v) || !m.numeroNodo) return;
+    var tope = Math.max(0, Math.min(1, v)) * 100;
+    var desde = modo === "sin" ? tope : 0, hasta = modo === "sin" ? 0 : tope;
+    var t = el("span", { "class": "numero" }, base().formato.aplicar("porcentaje", desde / 100));
+    try {
+      var conteo = new CU(t, hasta, { startVal: desde, decimalPlaces: 1, duration: 1.1, useEasing: true,
+        formattingFn: function (n) { return base().formato.aplicar("porcentaje", n / 100); } });
+      if (conteo.error) return;
+      poner(t);
+      conteo.start(function () { if (token === m.ficha) poner(final); });
+    } catch (e) { poner(final); }
+  }
+
   // ---------------------------------------------------------------------------------------
   // Línea de tiempo de los seis años: cada campaña con dos marcas (sin cubrirte y con tu cobertura) unidas por una mancuerna vertical
   // ---------------------------------------------------------------------------------------
@@ -506,23 +546,26 @@
     var lista = el("ol", { "class": "sc-linea-lista" });
     var nodo = el("div", { "class": "sc-linea", role: "img" }, [ec, lista]);
     var leyenda = el("ul", { "class": "sc-linea-leyenda" }, [
-      el("li", null, [el("span", { "class": "sc-muestra-punto", "aria-hidden": "true" }), "Con tu cobertura"]),
+      el("li", { "class": "sc-linea-ley-con" }, [el("span", { "class": "sc-muestra-punto", "aria-hidden": "true" }), "Con tu cobertura"]),
       el("li", null, [el("span", { "class": "sc-muestra-punto sc-muestra-sin", "aria-hidden": "true" }), "Sin cubrirte"])
     ]);
-    return { nodo: nodo, ec: ec, lista: lista, leyenda: leyenda, chart: null, visto: false, esperando: false, pendiente: null, items: [] };
+    return { nodo: nodo, ec: ec, lista: lista, leyenda: leyenda, modo: "con", chart: null, visto: false, esperando: false, pendiente: null, items: [] };
   }
 
-  function opcionLinea(d, anim) {
+  // modo «sin»: los puntos de «con tu cobertura» pasan a la posición (y el aspecto) de los de «sin cubrirte»; la mancuerna se cierra.
+  function opcionLinea(d, anim, modo) {
     var c = d.colores;
+    var sinCubrir = modo === "sin";
+    var conV = sinCubrir ? d.sin : d.con, peorI = sinCubrir ? d.peorSin : d.peor, mejorI = sinCubrir ? d.mejorSin : d.mejor;
     var texto = { color: c.texto, fontFamily: c.fuente };
     var etiqueta = function (clase, fondo, color) {
       var rich = {};
       rich[clase] = { backgroundColor: fondo, color: color, padding: [5, 9, 4, 9], fontFamily: c.fuente, fontSize: d.impreso ? 11 : 12, fontWeight: 600 };
       return { show: true, formatter: "{" + clase + "|" + (clase === "peor" ? "Peor año" : "Mejor año") + "}", rich: rich };
     };
-    var datosCon = d.con.map(function (v, i) {
-      if (i === d.peor && i !== d.mejor) return { value: v, symbolSize: d.impreso ? 18 : 26, label: Object.assign({ position: d.con[i] >= d.sin[i] ? "top" : "bottom", distance: 8, offset: [16, 0] }, etiqueta("peor", c.alerta, c.sobreAlerta)) };
-      if (i === d.mejor) return { value: v, symbolSize: d.impreso ? 18 : 26, label: Object.assign({ position: d.con[i] >= d.sin[i] ? "top" : "bottom", distance: 8, offset: [-16, 0] }, etiqueta("mejor", c.logro, c.sobreLogro)) };
+    var datosCon = conV.map(function (v, i) {
+      if (i === peorI && i !== mejorI) return { value: v, symbolSize: d.impreso ? 18 : 26, label: Object.assign({ position: conV[i] >= d.sin[i] ? "top" : "bottom", distance: 8, offset: [16, 0] }, etiqueta("peor", c.alerta, c.sobreAlerta)) };
+      if (i === mejorI) return { value: v, symbolSize: d.impreso ? 18 : 26, label: Object.assign({ position: conV[i] >= d.sin[i] ? "top" : "bottom", distance: 8, offset: [-16, 0] }, etiqueta("mejor", c.logro, c.sobreLogro)) };
       return v;
     });
     return {
@@ -537,7 +580,7 @@
             return '<div style="display:flex;justify-content:space-between;gap:18px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;box-sizing:border-box;border:3px solid '
               + color + ";background:" + (hueco ? c.superficie2 : color) + '"></span>' + nombre + "</span><b>" + valor + " USD</b></div>";
           };
-          var rol = i === d.peor ? " · peor año" : i === d.mejor ? " · mejor año" : "";
+          var rol = i === peorI ? " · peor año" : i === mejorI ? " · mejor año" : "";
           return '<div style="min-width:230px"><div style="font-weight:600;margin-bottom:5px">' + d.campanas[i] + rol + "</div>"
             + fila(c.con, false, "Con tu cobertura", d.usdCon[i]) + fila(c.sin, true, "Sin cubrirte", d.usdSin[i]) + "</div>";
         }
@@ -546,14 +589,15 @@
       yAxis: { type: "value", min: d.min, max: d.max, name: "USD", nameTextStyle: { color: c.suave, align: "right" }, splitNumber: 4,
         axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: c.borde } }, axisLabel: { color: c.suave, fontSize: d.impreso ? 11 : 12, formatter: d.formatoEje } },
       series: [
-        { type: "custom", name: "Diferencia", silent: true, z: 1, tooltip: { show: false }, data: d.campanas.map(function (x, i) { return [i, d.sin[i], d.con[i]]; }),
+        { id: "dif", type: "custom", name: "Diferencia", silent: true, z: 1, tooltip: { show: false }, data: d.campanas.map(function (x, i) { return [i, d.sin[i], conV[i]]; }),
           renderItem: function (params, api) {
             var a = api.coord([api.value(0), api.value(1)]), b = api.coord([api.value(0), api.value(2)]);
             return { type: "line", shape: { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, transition: ["shape"],
               style: { stroke: c.con, lineWidth: d.impreso ? 5 : 8, lineCap: "round", opacity: 0.45 } };
           } },
-        { type: "scatter", name: "Sin cubrirte", z: 3, symbolSize: d.impreso ? 14 : 18, data: d.sin, itemStyle: { color: c.superficie, borderColor: c.sin, borderWidth: 3 } },
-        { type: "scatter", name: "Con tu cobertura", z: 4, symbolSize: d.impreso ? 14 : 20, data: datosCon, itemStyle: { color: c.con, borderColor: c.superficie, borderWidth: 2 } }
+        { id: "sin", type: "scatter", name: "Sin cubrirte", z: 3, symbolSize: d.impreso ? 14 : 18, data: d.sin, itemStyle: { color: c.superficie, borderColor: c.sin, borderWidth: 3 } },
+        { id: "con", type: "scatter", name: sinCubrir ? "Sin cubrirte" : "Con tu cobertura", z: 4, symbolSize: d.impreso ? 14 : sinCubrir ? 18 : 20, data: datosCon,
+          itemStyle: sinCubrir ? { color: c.superficie, borderColor: c.sin, borderWidth: 3 } : { color: c.con, borderColor: c.superficie, borderWidth: 2 } }
       ]
     };
   }
@@ -566,7 +610,10 @@
     l.faltaDibujar = false;
     try {
       if (!l.chart) l.chart = E.init(l.ec, null, { renderer: "svg" });
-      l.chart.setOption(opcionLinea(d, !sinMovimiento()), true);
+      // Al cambiar entre «sin cubrirte» y «con tu cobertura» se mezcla con lo dibujado: los puntos se desplazan de una posición a la otra.
+      var cambio = !!l.modoDibujado && l.modoDibujado !== l.modo;
+      l.chart.setOption(opcionLinea(d, !sinMovimiento(), l.modo), !cambio);
+      l.modoDibujado = l.modo;
       l.chart.resize(imprimiendo ? { width: ANCHO_LINEA_IMPRESA, height: ALTO_LINEA_IMPRESA } : undefined);
       if (imprimiendo && typeof l.chart.getZr === "function") l.chart.getZr().refreshImmediately();
       l.nodo.setAttribute("data-modo", "grafico");
@@ -577,7 +624,10 @@
   }
 
   // d: { campanas, sin: [USD], con: [USD], usdSin, usdCon (textos), peor, mejor, min, max (eje común a todas las proporciones), formatoEje, colores, impreso, aria }
-  function pintarLinea(l, d) {
+  function pintarLinea(l, d, modo) {
+    l.modo = modo === "sin" ? "sin" : "con";
+    var peorI = l.modo === "sin" ? d.peorSin : d.peor, mejorI = l.modo === "sin" ? d.mejorSin : d.mejor;
+    l.nodo.setAttribute("data-modo-linea", l.modo);
     l.nodo.setAttribute("aria-label", d.aria);
     // Respaldo en texto (y lectura para quien no ve el dibujo): una fila por campaña, en orden cronológico.
     if (l.items.length !== d.campanas.length) {
@@ -589,7 +639,7 @@
       });
     }
     d.campanas.forEach(function (campana, i) {
-      var rol = i === d.peor ? "peor" : i === d.mejor ? "mejor" : "";
+      var rol = i === peorI ? "peor" : i === mejorI ? "mejor" : "";
       l.items[i].setAttribute("class", "sc-linea-item" + (rol ? " sc-linea-" + rol : ""));
       l.items[i].textContent = campana + (rol ? " (" + (rol === "peor" ? "peor año" : "mejor año") + ")" : "") + ": con tu cobertura " + d.usdCon[i] + " USD, sin cubrirte " + d.usdSin[i] + " USD";
     });
@@ -620,18 +670,58 @@
     silos.cuerpo.setAttribute("class", "sc-visual-cuerpo sc-silos-y-parcela");
     var cuerpoSilos = el("div", { "class": "sc-silos" });
     var parcela = crearParcela(null);
-    silos.cuerpo.appendChild(cuerpoSilos);
+    // Los silos y, justo debajo, el total de toneladas con precio fijado, en una misma columna (al lado de la parcela).
+    silos.cuerpo.appendChild(el("div", { "class": "sc-silos-columna" }, [cuerpoSilos, silos.frase]));
     silos.cuerpo.appendChild(parcela.nodo);
     var medidor = bloque("sc-bloque-medidor", "Riesgo que sacás");
     var m = crearMedidor();
     medidor.cuerpo.appendChild(m.nodo);
+    var selector = crearSelector();
     var linea = bloque("sc-bloque-linea", "Tus seis años de la tesis");
     var r = crearLinea();
     [r.leyenda, r.nodo].forEach(function (n) { linea.cuerpo.appendChild(n); });
-    var nodo = el("div", { "class": "sc-visual", id: "sc-visual" }, [silos.nodo, medidor.nodo, linea.nodo]);
-    return { nodo: nodo, silos: [], medidor: m, linea: r, frases: { silos: silos.frase, medidor: medidor.frase, linea: linea.frase },
+    var nodo = el("div", { "class": "sc-visual", id: "sc-visual", "data-modo": "con" }, [silos.nodo, selector.nodo, medidor.nodo, linea.nodo]);
+    var panel = { nodo: nodo, silos: [], medidor: m, linea: r, modo: "con", hayCobertura: true, selector: selector, ultimos: null, frases: { silos: silos.frase, medidor: medidor.frase, linea: linea.frase },
       cuerpoSilos: cuerpoSilos, parcela: parcela, clave: "", entradasListas: false };
+    selector.botones.forEach(function (b) { b.boton.addEventListener("click", function () { elegirModo(panel, b.modo); }); });
+    return panel;
   }
+
+  // Selector compartido por el medidor y la línea de los seis años: «Sin cubrirte» / «Con tu cobertura».
+  function crearSelector() {
+    var botones = [["sin", "Sin cubrirte"], ["con", "Con tu cobertura"]].map(function (x) {
+      return { modo: x[0], boton: el("button", { type: "button", "class": "sc-chip", "aria-pressed": x[0] === "con" ? "true" : "false" }, x[1]) };
+    });
+    var nodo = el("div", { "class": "sc-modo", role: "toolbar", "aria-label": "Comparar sin cubrirte y con tu cobertura" },
+      [el("span", { "class": "sc-modo-rotulo" }, "Mirá la comparación:")].concat(botones.map(function (b) { return b.boton; })));
+    return { nodo: nodo, botones: botones };
+  }
+
+  function modoEfectivo(panel) { return imprimiendo || !panel.hayCobertura ? "con" : panel.modo; }
+
+  // Pone el medidor, su número y la línea de los seis años en el estado elegido (los textos de abajo cambian por CSS según data-modo).
+  function aplicarModo(panel, animar) {
+    var d = panel.ultimos;
+    if (!d) return;
+    var modo = modoEfectivo(panel);
+    panel.nodo.setAttribute("data-modo", modo);
+    if (panel.hayCobertura) panel.selector.nodo.removeAttribute("hidden"); else panel.selector.nodo.setAttribute("hidden", "");
+    panel.selector.botones.forEach(function (b) { b.boton.setAttribute("aria-pressed", b.modo === modo ? "true" : "false"); });
+    panel.medidor.numeroNodo = d.medidor.numeroNodo || null;
+    panel.medidor.valorNumero = d.medidor.valor;
+    pintarMedidor(panel.medidor, d.medidor.valor, d.medidor.umbral, d.medidor.textoMarca, d.medidor.aria, d.medidor.colores, modo);
+    ponerNumero(panel.medidor, modo, animar);
+    pintarLinea(panel.linea, d.linea, modo);
+  }
+
+  function elegirModo(panel, modo) {
+    if (panel.modo === modo) return;
+    panel.modo = modo;
+    aplicarModo(panel, true);
+  }
+
+  // Vuelve el selector a «Con tu cobertura» (lo usa la página cuando la persona cambia su cobertura).
+  function reiniciarModo(panel) { if (panel) panel.modo = "con"; }
 
   // datos: { colores: { metal }, silos: [{ cultivo, h, color, etiqueta, pctTexto, toneladasTexto }], medidor: { valor, umbral, textoMarca, aria }, linea: {...} }
   function actualizarPanel(panel, datos) {
@@ -649,13 +739,13 @@
     datos.silos.forEach(function (s, i) {
       var silo = panel.silos[i];
       base().vaciar(silo.texto);
-      silo.texto.appendChild(el("strong", null, s.cultivo));
-      silo.texto.appendChild(raiz.document.createTextNode(" · " + s.toneladasTexto));
+      silo.texto.appendChild(raiz.document.createTextNode(s.toneladasTexto));
       pintarSilo(silo, s, datos.colores);
     });
     if (datos.parcela) panel.parcela.actualizar(datos.parcela);
-    pintarMedidor(panel.medidor, datos.medidor.valor, datos.medidor.umbral, datos.medidor.textoMarca, datos.medidor.aria, datos.medidor.colores);
-    pintarLinea(panel.linea, datos.linea);
+    panel.ultimos = datos;
+    panel.hayCobertura = datos.hayCobertura !== false;
+    aplicarModo(panel, false);
     if (!panel.entradasListas) {
       panel.entradasListas = true;
       Array.prototype.slice.call(panel.nodo.childNodes).forEach(function (n) { entrada(n); });
@@ -675,8 +765,8 @@
 
   raiz.TESIS_VISUAL = {
     sinMovimiento: sinMovimiento, fijarImpresion: fijarImpresion, terminar: terminar,
-    entrada: entrada, espiar: espiar, contar: contar, scrollSuave: scrollSuave,
-    crearPanel: crearPanel, crearParcela: crearParcela, iconoCultivo: iconoCultivo, dibujoParcelaChica: dibujoParcelaChica, actualizarPanel: actualizarPanel, redimensionarPanel: redimensionarPanel,
+    entrada: entrada, espiar: espiar, contar: contar, scrollSuave: scrollSuave, fijarScroll: fijarScroll,
+    crearPanel: crearPanel, crearParcela: crearParcela, iconoCultivo: iconoCultivo, dibujoParcelaChica: dibujoParcelaChica, actualizarPanel: actualizarPanel, redimensionarPanel: redimensionarPanel, reiniciarModo: reiniciarModo, elegirModo: elegirModo,
     FORMA_SILO: FORMA_SILO, SEGMENTOS: SEGMENTOS
   };
   if (!raiz.TESIS_APP) throw new Error("campana-visual.js tiene que cargarse después de app.js");

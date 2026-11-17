@@ -64,3 +64,26 @@
   .tc-multiples { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .tc * { transition: none !important; animation: none !important; } }
+
+/* Volatilidad que asumís: símbolo de riesgo (3 barras: alto / medio / bajo), caja «Qué significa» y tabla */
+.tc-grafico-volatilidad { height: 300px; }
+.tc-significa { display: grid; gap: 0.6rem; padding: 1rem; background: var(--color-superficie-2); border-left: 4px solid var(--color-acento); }
+.tc-significa h5 { margin: 0; }
+.tc-significa-lista { margin: 0; display: grid; gap: 0.5rem; }
+.tc-significa-lista dt { font-weight: 600; font-size: 0.9rem; }
+.tc-significa-lista dd { margin: 0; font-size: 0.9rem; line-height: 1.45; color: var(--color-texto-suave); }
+.tc-riesgo { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+.tc-barras { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.tc-barra { width: 5px; background: var(--color-borde-fuerte); opacity: 0.5; }
+.tc-barra:nth-child(1) { height: 6px; }
+.tc-barra:nth-child(2) { height: 10px; }
+.tc-barra:nth-child(3) { height: 14px; }
+.tc-riesgo[data-nivel="alto"] { color: var(--color-alerta); }
+.tc-riesgo[data-nivel="alto"] .tc-barra.llena { background: var(--color-alerta); opacity: 1; }
+.tc-riesgo[data-nivel="medio"] { color: var(--color-aviso); }
+.tc-riesgo[data-nivel="medio"] .tc-barra.llena { background: var(--color-aviso); opacity: 1; }
+.tc-riesgo[data-nivel="bajo"] { color: var(--color-logro); }
+.tc-riesgo[data-nivel="bajo"] .tc-barra.llena { background: var(--color-logro); opacity: 1; }
+.tc-leyenda { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; font-size: 0.8rem; color: var(--color-texto-suave); }
+.tc-tabla-vol th[scope="row"] { font-weight: 400; }
+@media (min-width: 760px) { .tc-significa-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem 1.5rem; } }

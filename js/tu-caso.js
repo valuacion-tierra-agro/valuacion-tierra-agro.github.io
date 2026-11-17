@@ -122,7 +122,7 @@
   function signo(x) { return (x >= 0 ? "+" : "−") + base().formato.aplicar("usd", Math.abs(x)); }
   function subeCae(v) { return (v >= 0 ? "subió " : "cayó ") + pctTxt(v); }
   function etiquetaH(h) { return h === 0 ? "Vender a cosecha (0 %)" : "Cubrir el " + Math.round(h * 100) + " %"; }
-  function miles(x) { return (x < 0 ? "−" : "") + Math.round(Math.abs(x) / 1000).toLocaleString("es-AR") + " mil"; }
+  function miles(x) { if (Math.round(Math.abs(x) / 1000) === 0) return "0"; return (x < 0 ? "−" : "") + Math.round(Math.abs(x) / 1000).toLocaleString("es-AR") + " mil"; }
   function pctTxt(x) { return base().formato.aplicar("porcentaje", Math.abs(x)); }
 
   // Frases del relato: salen de las diferencias campaña por campaña entre cubrir todo y vender a cosecha.
@@ -270,7 +270,7 @@
   function colores() {
     var EC = raiz.TESIS_EC;
     return { esperado: EC.colorDe("color-proyectado", "#a8a8a8"), cobrado: EC.colorDe("color-acento", "#4589ff"), gana: EC.colorDe("color-con", "#009d9a"),
-      pierde: EC.colorDe("color-alerta", "#ff8389"), neutro: EC.colorDe("color-borde-fuerte", "#6f6f6f"), cobertura: EC.colorDe("color-acento-fuerte", "#0f62fe") };
+      pierde: EC.colorDe("color-alerta", "#ff8389"), aviso: EC.colorDe("color-aviso", "#f1c21b"), logro: EC.colorDe("color-logro", "#42be65"), neutro: EC.colorDe("color-borde-fuerte", "#6f6f6f"), cobertura: EC.colorDe("color-acento-fuerte", "#0f62fe") };
   }
 
   // Hex (#rrggbb) con transparencia, y relleno degradado de arriba (suave) hacia abajo (transparente).
@@ -396,6 +396,145 @@
       [el("div", { "class": "tc-interruptores", role: "group", "aria-label": "Cuánto cubrir" }, botones), el("div", { "class": "tc-multiples" }, tarjetas)]);
   }
 
+  // ---------------------------------------------------------------------------------------
+  // Volatilidad que asumís: sorpresa del margen (frente al proyectado) de cada campaña, con 0, 50, 100 % y tu cobertura.
+  // Todo sale de motor.calcularCaso (soloPrecioCon = sorpresa con rinde fijo; sorpresaCon = con el rinde cosechado) y de motor.desvioMuestral:
+  // el mismo desvío que muestra «Probá variantes» (motor.mezcla). Ninguna fórmula nueva.
+  // ---------------------------------------------------------------------------------------
+  var UMBRAL_HIPOTESIS = 0.5; // la hipótesis de la tesis pide bajar el riesgo más de 50 %
+
+  // hs: lista de { rotulo, h } donde h es un número (todos los cultivos) o { cultivo: h }.
+  function volatilidad(datos, zona, ha, hs) {
+    datos = datos || raiz.TESIS_DATOS;
+    var m = raiz.TESIS_MOTOR, comision = datos.parametros.comision.v, cultivos = Object.keys(ha);
+    var casos = {};
+    cultivos.forEach(function (c) { casos[c] = porCampana(m.casosDe(datos, c, zona)); });
+    var campanas = casos[cultivos[0]].map(function (c) { return c.campana; });
+    var celdas = [];
+    cultivos.forEach(function (c) {
+      casos[c].forEach(function (caso) {
+        ["rindeEsperado", "rindeReal", "fs", "sc", "fc"].forEach(function (k) { celdas.push(m.origen(caso, k, datos)); });
+      });
+    });
+    var hDe = function (h, c) { return typeof h === "number" ? h : (h && h[c]) || 0; };
+    var niveles = hs.map(function (x) {
+      var fijo = [], real = [];
+      campanas.forEach(function (camp, t) {
+        var a = 0, b = 0;
+        cultivos.forEach(function (c) {
+          var r = m.calcularCaso(casos[c][t], { h: hDe(x.h, c), comision: comision, datos: datos });
+          a += ha[c] * r.soloPrecioCon; b += ha[c] * r.sorpresaCon;
+        });
+        fijo.push(a); real.push(b);
+      });
+      var iPeor = fijo.indexOf(Math.min.apply(null, fijo)), iMejor = fijo.indexOf(Math.max.apply(null, fijo));
+      return { rotulo: x.rotulo, h: x.h, sorpresas: fijo, media: m.promedio(fijo), desvio: m.desvioMuestral(fijo), desvioReal: m.desvioMuestral(real),
+        peor: fijo[iPeor], campanaPeor: campanas[iPeor], mejor: fijo[iMejor], campanaMejor: campanas[iMejor], rango: fijo[iMejor] - fijo[iPeor] };
+    });
+    var sin = niveles[0];
+    niveles.forEach(function (n, i) {
+      n.reduccion = sin.desvio > 0 ? 1 - n.desvio / sin.desvio : null;
+      n.reduccionReal = sin.desvioReal > 0 ? 1 - n.desvioReal / sin.desvioReal : null;
+      n.nivel = i === 0 || n.reduccion === null || n.reduccion <= 0 ? "alto" : n.reduccion >= UMBRAL_HIPOTESIS ? "bajo" : "medio";
+    });
+    var origen = base().origenCalculado("Desvío muestral, entre campañas, de la sorpresa del margen (margen con cobertura − margen proyectado) de tus hectáreas, con P = h·[Fs + (Sc − Fc)] + (1 − h)·Sc",
+      celdas, null, ["rinde fijo de planteo de la zona", "comisión " + String(comision * 100).replace(".", ",") + " %"]);
+    return { campanas: campanas, niveles: niveles, origen: origen, umbral: UMBRAL_HIPOTESIS };
+  }
+
+  var NOMBRE_NIVEL = { alto: "riesgo alto", medio: "riesgo medio", bajo: "riesgo bajo" };
+  var BARRAS_NIVEL = { alto: 3, medio: 2, bajo: 1 };
+
+  // Niveles de cobertura de la fila: 0, 50 y 100 %, más «Tu cobertura» si es distinta de esas.
+  function niveles3(ctx) {
+    var lista = [{ rotulo: "Sin cubrir (0 %)", h: 0 }, { rotulo: "Cubriendo 50 %", h: 0.5 }, { rotulo: "Cubriendo 100 %", h: 1 }];
+    var h = ctx && ctx.h, claves = h && typeof h === "object" ? Object.keys(h) : [];
+    if (!claves.length) return lista;
+    var vals = claves.map(function (c) { return h[c]; });
+    var uniforme = vals.every(function (v) { return Math.abs(v - vals[0]) < 1e-9; });
+    if (uniforme && [0, 0.5, 1].some(function (s) { return Math.abs(s - vals[0]) < 1e-9; })) return lista;
+    var txt = uniforme ? "Tu cobertura (" + Math.round(vals[0] * 100) + " %)"
+      : "Tu cobertura (" + claves.map(function (c) { return c + " " + Math.round(h[c] * 100) + " %"; }).join(", ") + ")";
+    lista.push({ rotulo: txt, h: h });
+    return lista;
+  }
+
+  function colorNivel(c) { return { alto: c.pierde, medio: c.aviso, bajo: c.logro }; }
+
+  // Símbolo de riesgo: tres barritas (cuántas llenas = qué tan alto) y el nombre del nivel.
+  function simboloRiesgo(nivel) {
+    var barras = [1, 2, 3].map(function (i) { return el("span", { "class": "tc-barra" + (i <= BARRAS_NIVEL[nivel] ? " llena" : "") }); });
+    return el("span", { "class": "tc-riesgo", "data-nivel": nivel }, [el("span", { "class": "tc-barras", "aria-hidden": "true" }, barras), el("span", { "class": "tc-riesgo-t" }, NOMBRE_NIVEL[nivel])]);
+  }
+
+  function opcionVolatilidad(v) {
+    var EC = raiz.TESIS_EC, tm = EC.tema(), c = colores(), col = colorNivel(c), filas = v.niveles;
+    var franja = filas.map(function (n, i) {
+      return { value: [n.peor, n.mejor, i], itemStyle: { color: alfa(col[n.nivel], 0.22), borderColor: col[n.nivel] } };
+    });
+    var puntos = [];
+    filas.forEach(function (n, i) {
+      n.sorpresas.forEach(function (s, t) { puntos.push({ value: [Math.round(s), i, v.campanas[t]], itemStyle: { color: col[n.nivel], borderColor: tm.superficie, borderWidth: 1 } }); });
+    });
+    var rich = { n: { color: tm.texto, fontSize: 12, fontWeight: 600, lineHeight: 18 } };
+    ["alto", "medio", "bajo"].forEach(function (k) { rich[k] = { color: col[k], fontSize: 11, lineHeight: 16 }; });
+    return {
+      animation: tm.animar, animationDuration: 900, textStyle: EC.estiloTexto(tm), grid: { left: 118, right: 20, top: 16, bottom: 44 },
+      tooltip: EC.tooltipDelTema(tm, { trigger: "item", formatter: function (p) {
+        if (p.seriesType === "scatter") return filas[p.value[1]].rotulo + "<br/>" + p.value[2] + ": " + signo(p.value[0]) + " USD frente a lo proyectado";
+        var n = filas[p.value[2]];
+        return n.rotulo + "<br/>Peor año (" + n.campanaPeor + "): " + signo(n.peor) + " USD<br/>Mejor año (" + n.campanaMejor + "): " + signo(n.mejor) + " USD";
+      } }),
+      xAxis: { type: "value", scale: true, name: "Margen real − margen proyectado (USD)", nameLocation: "middle", nameGap: 28, nameTextStyle: { color: tm.suave, fontSize: 11 },
+        axisLabel: { color: tm.suave, formatter: function (x) { return miles(x); } }, splitLine: { lineStyle: { color: tm.borde } } },
+      yAxis: { type: "category", inverse: true, data: filas.map(function (n) { return n.rotulo; }), axisTick: { show: false }, axisLine: { lineStyle: { color: tm.bordeFuerte } },
+        axisLabel: { interval: 0, rich: rich, formatter: function (val, i) { return "{n|" + val.replace(" (", "\n(").replace(", ", ",\n") + "}\n{" + filas[i].nivel + "|" + NOMBRE_NIVEL[filas[i].nivel] + "}"; } } },
+      series: [
+        { type: "custom", z: 1, data: franja, encode: { x: [0, 1], y: 2 }, renderItem: function (params, api) {
+          var a = api.coord([api.value(0), api.value(2)]), b = api.coord([api.value(1), api.value(2)]), alto = Math.max(api.size([0, 1])[1] * 0.5, 14);
+          return { type: "rect", shape: { x: a[0], y: a[1] - alto / 2, width: Math.max(b[0] - a[0], 2), height: alto }, style: api.style({ lineWidth: 1 }) };
+        } },
+        { type: "scatter", z: 3, symbolSize: 13, data: puntos,
+          markLine: { silent: true, symbol: "none", lineStyle: { color: c.esperado, type: "dashed" }, label: { formatter: "Lo proyectado", position: "start", distance: 6, color: tm.suave, fontSize: 11 }, data: [{ xAxis: 0 }] } }
+      ]
+    };
+  }
+
+  function seccionVolatilidad(r, ctx, ha) {
+    var f = base().formato;
+    var v = volatilidad(raiz.TESIS_DATOS, r.zona, ha, niveles3(ctx)), o = v.origen, sin = v.niveles[0];
+    var cien = v.niveles.filter(function (n) { return n.h === 1; })[0] || v.niveles[v.niveles.length - 1];
+    var cuanto = function (n) { return n.reduccion === null ? "—" : n.reduccion > 0 ? "Baja " + f.aplicar("porcentaje", n.reduccion) : "No baja"; };
+    var nodo = el("div", { "class": "tc-grafico tc-grafico-volatilidad", role: "img",
+      "aria-label": "Sorpresa del margen de cada campaña frente a lo proyectado, una fila por nivel de cobertura: " + v.niveles.map(function (n) { return n.rotulo + ", " + NOMBRE_NIVEL[n.nivel]; }).join("; ") });
+    nodos.pendientes.push({ clave: "volatilidad", nodo: nodo, opcion: function () { return opcionVolatilidad(v); } });
+    var idea = function (t, d) { return el("div", null, [el("dt", null, t), el("dd", null, d)]); };
+    var significa = el("aside", { "class": "tc-significa" }, [
+      el("h5", null, "Qué significa"),
+      el("dl", { "class": "tc-significa-lista" }, [
+        idea("Volatilidad", "Cuánto puede moverse tu margen de un año a otro por el precio."),
+        idea("Riesgo (en la tesis)", "El desvío del margen real respecto del proyectado entre campañas: cuánto se aleja, en general, lo que cobrás de lo que planeaste."),
+        idea("Sorpresa de precio", "La diferencia entre el precio que cobrás a cosecha (Sc) y el que esperabas al sembrar (Fs)."),
+        idea("Base", "Sc − Fc: lo único del precio que queda abierto cuando te cubrís.")
+      ]),
+      el("p", { "class": "tc-nota" }, ["Con tus números: sin cubrir, tu margen se movió ", num(sin.rango, "usd", o), " USD entre el peor año (", sin.campanaPeor, ", ", num(sin.peor, "usd", o), " USD frente a lo proyectado) y el mejor (",
+        sin.campanaMejor, ", ", num(sin.mejor, "usd", o), " USD). Cubriendo " + (cien.h === 1 ? "el 100 %" : cien.rotulo.toLowerCase()) + ", ese recorrido fue de ", num(cien.rango, "usd", o), " USD."])
+    ]);
+    var meta = Math.round(v.umbral * 100) + " %";
+    var leyenda = el("p", { "class": "tc-leyenda" }, [el("span", null, "Cómo se lee el riesgo:"), simboloRiesgo("alto"), el("span", null, "sin cubrir, o cubrir no bajó el desvío"),
+      simboloRiesgo("medio"), el("span", null, "bajó el desvío, pero menos de " + meta), simboloRiesgo("bajo"), el("span", null, "bajó " + meta + " o más (la meta de la hipótesis de la tesis)")]);
+    var filasTabla = v.niveles.map(function (n) {
+      return el("tr", { "data-nivel": n.nivel }, [el("th", { scope: "row" }, [n.rotulo, el("br"), simboloRiesgo(n.nivel)]), el("td", null, [num(n.desvio, "usd", o), " USD"]),
+        el("td", null, n === sin ? "—" : cuanto(n)), el("td", null, [num(n.peor, "usd", o), " a ", num(n.mejor, "usd", o)]), el("td", null, num(n.media, "usd", o))]);
+    });
+    var cab = ["Cobertura y riesgo", "Desvío de la sorpresa (USD)", "Frente a sin cubrir", "Peor a mejor año (USD)", "Sorpresa promedio (USD)"];
+    return el("section", { "class": "tarjeta tc-bloque tc-historia tc-volatilidad" }, [el("h4", null, "Cuánto se movió tu margen: la volatilidad que asumís"),
+      el("p", { "class": "tc-relato" }, "Para vos, no cubrir es depender del precio que haya el día de la cosecha: cada año tu margen se mueve con la sorpresa de precio. Cubrir es fijar una parte del precio de antemano y tener un resultado más previsible. Esto es lo que pasó en tu zona con tus cultivos."),
+      significa, nodo, leyenda,
+      el("div", { "class": "tc-scroll" }, el("table", { "class": "tc-tabla-vol" }, [el("thead", null, el("tr", null, cab.map(function (t) { return el("th", null, t); }))), el("tbody", null, filasTabla)])),
+      el("p", { "class": "tc-lectura" }, "Cómo se lee: cada punto es una campaña (" + v.campanas[0] + " a " + v.campanas[v.campanas.length - 1] + ") y la franja va del peor al mejor año. Sin cubrir asumís toda la sorpresa de precio de cada año, por eso los puntos están dispersos (volatilidad alta). Al cubrir fijás parte del precio y solo queda la base (Sc − Fc), por eso los resultados se amontonan. Cubrir no necesariamente te hace ganar más en promedio (mirá la sorpresa promedio): te hace depender menos de cómo venga el precio. El desvío usa el rinde fijo de planteo, como el resto de «Tu caso» y la hipótesis de la tesis; en «Probá variantes» se usa el rinde que se cosechó, que también se mueve y no se cubre, por eso ahí la baja es menor. Es una explicación de lo que pasó, no una recomendación.")]);
+  }
+
   // 3. Por campaña: cuánto más (o menos) habrías tenido cubriendo la mitad o todo, frente a vender a cosecha.
   function opcionBarras(r) {
     var EC = raiz.TESIS_EC, t = EC.tema(), c = colores();
@@ -498,6 +637,7 @@
     nodos.cascada = nodos.cascada || { h: 0, nodos: {} };
     nodos.cascada.nodos = {};
     cont.appendChild(anim(seccionCascada(r, nodos.cascada)));
+    cont.appendChild(anim(seccionVolatilidad(r, ctx, ha)));
     cont.appendChild(anim(seccionBarras(r)));
     if (r.aporte.length > 1 && r.aporte.every(function (x) { return x.media > 0; })) cont.appendChild(anim(seccionDona(r)));
     nodos.pendientes.forEach(function (x) { nodos.ec.dibujar(x.clave, x.nodo, x.opcion()); });
@@ -530,7 +670,7 @@
     disponer();
   }
 
-  var api = { calcular: calcular, puente: puente, relato: relato, AVISO: AVISO };
+  var api = { calcular: calcular, volatilidad: volatilidad, niveles3: niveles3, puente: puente, relato: relato, AVISO: AVISO };
   var seccion = { id: "tu-caso", titulo: "Tu caso", grupo: "historico", montar: montar, actualizar: actualizar, limpiar: limpiar };
   api.seccion = seccion;
   raiz.TESIS_TU_CASO = api;

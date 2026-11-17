@@ -2535,6 +2535,16 @@ html.lenis body {
   gap: 1.5rem;
 }
 
+html {
+  scroll-padding-top: 6rem;
+}
+
+.sc-simulador,
+.sc-visual-bloque,
+.sc-historia {
+  scroll-margin-top: 6rem;
+}
+
 .sc-nav {
   position: sticky;
   top: 3rem;
@@ -2709,6 +2719,15 @@ html.lenis body {
   margin: 0;
 }
 
+.sc-historia-conclusion {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-superficie-2);
+  border-left: 4px solid var(--color-con);
+  font-weight: 600;
+}
+
+
 .sc-historia-lectura {
   margin: 0;
   font-size: 0.9375rem;
@@ -2774,6 +2793,39 @@ html.lenis body {
   gap: 1rem;
 }
 
+/* Selector «Sin cubrirte» / «Con tu cobertura» del medidor y de la línea de los seis años */
+.sc-modo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sc-modo[hidden] {
+  display: none;
+}
+
+.sc-modo-rotulo {
+  margin-right: 0.25rem;
+  font-weight: 600;
+}
+
+@media (min-width: 1000px) {
+  .sc-modo {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Cada frase tiene su versión sin cubrirte y con tu cobertura; se ve la del estado elegido */
+.sc-visual[data-modo="sin"] [data-ver="con"],
+.sc-visual[data-modo="con"] [data-ver="sin"] {
+  display: none;
+}
+
+.sc-visual[data-modo="sin"] .sc-linea-ley-con {
+  display: none;
+}
+
 .sc-visual-bloque h4 {
   margin: 0;
   font-size: 1.25rem;
@@ -2798,20 +2850,30 @@ html.lenis body {
 }
 
 /* Silos de chapa: uno por cultivo, con su color; el líquido de ECharts sube y baja con una ola */
+/* Una tarjeta por cultivo, con todo junto: el silo grande arriba y, debajo, el nombre, el % cubierto y las toneladas.
+   Con varios cultivos van en fila o en grilla, según el ancho. */
+.sc-silos-columna {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
 .sc-silos {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  justify-items: stretch;
+  gap: 1rem;
 }
 
 .sc-silo {
   --silo: var(--color-con);
   display: grid;
   justify-items: center;
-  gap: 0.5rem;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
   margin: 0;
-  padding: 1rem 1.25rem 1.1rem;
+  padding: 1rem 1.25rem 1.25rem;
   background-color: var(--color-superficie-2);
   border-top: 4px solid var(--silo);
   transition: transform 0.25s ease;
@@ -3016,8 +3078,16 @@ html.lenis body {
 
 .sc-silo-caja {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1;
+}
+
+/* El dibujo de ECharts mide 320 px: se escala al ancho que tenga la caja */
+.sc-silo-ec > div,
+.sc-silo-ec svg {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .sc-silo-ec,
@@ -3095,25 +3165,29 @@ html.lenis body {
   fill: var(--color-borde-fuerte);
 }
 
-.sc-silo-fila {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.sc-silo-datos {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  text-align: center;
 }
 
-/* El porcentaje va al costado del silo, no encima, para que se vea el llenado */
+.sc-silo-nombre {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--silo);
+}
+
+/* El porcentaje va debajo del silo, no encima, para que se vea el llenado */
 .sc-silo-lado {
   display: grid;
-  justify-items: start;
+  justify-items: center;
   gap: 0;
-  min-width: 4.5rem;
-  padding-left: 0.75rem;
-  border-left: 3px solid var(--silo);
 }
 
 .sc-silo-pct {
   font-family: var(--fuente-titulos);
-  font-size: 2rem;
+  font-size: 2.75rem;
   font-weight: 300;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -3646,8 +3720,20 @@ html.lenis body {
   }
 
   .sc-silos {
-    gap: 0.5rem 1.5rem;
-    zoom: 0.72;
+    gap: 0.5rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  }
+
+  .sc-silo-caja {
+    max-width: 120px;
+  }
+
+  .sc-modo {
+    display: none;
+  }
+
+  .sc-silo-pct {
+    font-size: 1.5rem;
   }
 
   .sc-visual-grande {
