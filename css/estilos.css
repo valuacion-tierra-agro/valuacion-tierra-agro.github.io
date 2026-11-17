@@ -4059,3 +4059,9 @@ html {
   color: var(--color-alerta);
   font-weight: 600;
 }
+
+/* Cultivo sin datos en la zona elegida: se ve, pero apagado y sin poder tocarse. */
+.sc-chip-cultivo[data-sin-datos] { opacity: .45; cursor: not-allowed; border-style: dashed; }
+.sc-chip-cultivo[data-sin-datos]:hover { background: inherit; }
+.sc-chip-cultivo[data-sin-datos] .sc-chip-icono { filter: grayscale(1); }
+.sc-chip-cultivo[data-sin-datos]::after { content: "sin datos en esta zona"; font-size: .75rem; color: var(--color-texto-suave); margin-left: .5rem; }

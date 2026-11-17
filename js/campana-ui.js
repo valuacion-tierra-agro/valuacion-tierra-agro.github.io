@@ -302,7 +302,7 @@
   }
 
   function alternarCultivo(cultivo) {
-    if (!estado.zona) return;
+    if (!estado.zona || !estado.defs[cultivo]) return;
     var i = estado.cultivos.indexOf(cultivo);
     if (i >= 0) estado.cultivos.splice(i, 1);
     else estado.cultivos.push(cultivo);
@@ -690,12 +690,17 @@
     if (zona && faltan.length) {
       var lista = function (xs) { return xs.map(function (c) { return c.toLowerCase(); }).join(xs.length === 2 ? " y " : ", "); };
       nodos.avisoPocosCultivos.textContent = "En " + zona + " hay datos " + (ofrecidos.length === 1 ? "solo de " : "de ") + lista(ofrecidos) +
-        ": no hay campañas de " + lista(faltan) + " para esta zona. Si sembrás " + (faltan.length === 1 ? "ese cultivo" : "esos cultivos") + ", elegí una zona vecina que los tenga.";
+        ": no hay campañas de " + lista(faltan) + " para esta zona, por eso " + (faltan.length === 1 ? "aparece apagado" : "aparecen apagados") + ". Si " + (faltan.length === 1 ? "lo sembrás" : "los sembrás") + ", elegí una zona vecina que " + (faltan.length === 1 ? "lo tenga" : "los tenga") + ".";
     }
     C().CULTIVOS.forEach(function (c) {
       var hay = ofrecidos.indexOf(c) >= 0;
       var activo = estado.cultivos.indexOf(c) >= 0;
-      nodos.chips[c].hidden = !hay;
+      // Los tres cultivos se ven siempre (con zona elegida); los que no tienen datos en la zona quedan apagados.
+      nodos.chips[c].hidden = !zona;
+      if (hay) nodos.chips[c].removeAttribute("disabled"); else nodos.chips[c].setAttribute("disabled", "disabled");
+      nodos.chips[c].setAttribute("aria-disabled", hay ? "false" : "true");
+      if (hay) { nodos.chips[c].removeAttribute("data-sin-datos"); nodos.chips[c].removeAttribute("title"); }
+      else { nodos.chips[c].setAttribute("data-sin-datos", "true"); nodos.chips[c].setAttribute("title", c + ": sin datos en esta zona"); }
       nodos.chips[c].setAttribute("aria-pressed", activo ? "true" : "false");
       nodos.bloquesHa[c].hidden = !(hay && activo);
       nodos.bloquesRinde[c].hidden = !(hay && activo);
