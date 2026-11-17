@@ -616,7 +616,6 @@
     return {
       cultivo: fila.cultivo,
       campana: fila.campana,
-      enso: { texto: fila.faseEnso.v, origen: fila.faseEnso.o },
       efectoPrecio: celda(precio, "usd", calculado(FORMULAS.efectoPrecio, partes(["rindeEsperado", "sc", "fs"]), enExcel(precio, fila.efectoPrecio), [NOTA_SIN_H])),
       efectoRinde: celda(rinde, "usd", calculado(FORMULAS.efectoRinde,
         partes(["rindeEsperado", "rindeReal", "fs", "gc", "excel.cosechaEsperado", "excel.cosechaReal"]), enExcel(rinde, fila.efectoRinde), [NOTA_SIN_H])),
@@ -957,14 +956,12 @@
       "Ver orígenes de los números de " + fila.cultivo + ", campaña " + fila.campana, function () {
         var num = function (etiqueta, c) { return { etiqueta: etiqueta, v: c.v, formato: c.formato, origen: c.origen }; };
         return [
-          { etiqueta: "Fase ENSO", texto: fila.enso.texto, origen: fila.enso.origen },
           num("Efecto precio (USD/ha)", fila.efectoPrecio), num("Efecto rinde (USD/ha)", fila.efectoRinde), num("Interacción (USD/ha)", fila.interaccion),
           { etiqueta: "Pesó más", texto: fila.pesoMas.texto, origen: fila.pesoMas.origen }
         ];
       });
     return el("tr", fila.pesoMas.texto === "Rinde" ? { "class": "rh-peso-rinde" } : null, [
       el("th", { scope: "row" }, [el("span", { "class": "rh-cultivo" }, fila.cultivo), el("span", { "class": "rh-campana" }, fila.campana)]),
-      el("td", null, textoConOrigen("dato-texto", fila.enso)),
       numeroEn(fila.efectoPrecio), numeroEn(fila.efectoRinde), numeroEn(fila.interaccion),
       el("td", null, textoConOrigen("dato-texto", fila.pesoMas)),
       el("td", { "class": "col-origenes" }, boton)
@@ -974,7 +971,7 @@
   function pintarSorpresa(sorpresa) {
     var a = base();
     var el = a.el;
-    var columnas = ["Cultivo y campaña", "Fase ENSO", "Efecto precio", "Efecto rinde", "Interacción", "Pesó más", "Orígenes"];
+    var columnas = ["Cultivo y campaña", "Efecto precio", "Efecto rinde", "Interacción", "Pesó más", "Orígenes"];
     a.vaciar(nodos.sorpresa);
     nodos.sorpresa.appendChild(el("div", { "class": "rh-lectura" }, sorpresa.lectura.map(function (frase) { return el("p", null, textoDeFrase(frase)); })));
     nodos.sorpresa.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla rh-tabla-sorpresa" }, [

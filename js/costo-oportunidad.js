@@ -161,10 +161,10 @@
     var c = raiz.TESIS_EC.colorDe;
     var g = armarGrafico(v);
     var estilos = {
-      rCon: { color: c("color-con", "#1f7a7a"), grosor: 4 },
-      rSin: { color: c("color-sin", "#b7791f"), grosor: 4 },
-      kCon: { color: c("color-k-base", "#5b3c8c"), trazo: "dashed", simbolo: "rect" },
-      kSin: { color: c("color-supuesto", "#1a5aa6"), trazo: "dashed", simbolo: "triangle" }
+      rCon: { color: c("color-con", "#009d9a"), grosor: 4 },
+      rSin: { color: c("color-sin", "#b28600"), grosor: 4 },
+      kCon: { color: c("color-k-base", "#a56eff"), trazo: "dashed", simbolo: "rect" },
+      kSin: { color: c("color-supuesto", "#33b1ff"), trazo: "dashed", simbolo: "triangle" }
     };
     var series = g.series.map(function (s) { var e = estilos[s.clave]; return { nombre: s.nombre, valores: s.valores, color: e.color, trazo: e.trazo, grosor: e.grosor, simbolo: e.simbolo }; });
     ec.dibujar("costo", nodos.grafico, raiz.TESIS_EC.opcionDeLineas(t, g.categorias, series, function (x) { return base().formato.porcentaje(x); }, { escalar: false }));

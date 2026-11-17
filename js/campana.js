@@ -7,7 +7,7 @@
 //   spot proyectado = último Sc × (1 + crecimiento anual compuesto de Sc entre 2020/21 y 2025/26)
 //   base esperada = promedio de (Sc − Fc) del cultivo
 //   R = MB total ÷ valor de la tierra total
-//   escenarios históricos: sin cubrir P = F27 × Sc_t/Fs_t; cubierto P = F27 × (1 + (Sc_t − Fc_t)/Fs_t)
+//   escenarios históricos: sin cubrir P = spot proyectado × Sc_t/Fs_t; cubierto P = F27 × (1 + (Sc_t − Fc_t)/Fs_t)
 //   Sharpe adaptado = R media ÷ desvío muestral de R (sin tasa libre de riesgo).
 // Script clásico: anda con <script src> y con require en Node (pruebas).
 (function (raiz) {
@@ -26,16 +26,25 @@
   // filas de otros meses de vencimiento (mes: 1 a 12). Mientras valor sea null, el simulador usa el futuro de siembra 2025/26 de la tesis
   // (Fs) como referencia y lo rotula así: nunca se inventa una cotización. El productor no carga precios: elige los meses de su calendario
   // y el simulador toma el precio del contrato que vence en el mes de cosecha 2026/27.
+  // Cargadas el 2026-11-16 con el mismo método que el Fs de la tesis: precio promedio ponderado por volumen (PPP) de las ruedas del
+  // mes de siembra (precio de la rueda = último si es mayor que 0; si no, ajuste). Datos: Boletín Diario de la Bolsa de Comercio de
+  // Rosario, porque A3 no publica el Futures_27.csv. Método verificado contra la tesis: ENE26 en jun-2025 da 203,97 y ABR26 en
+  // sep-2025 da 176,64. Faltan ruedas sin boletín (trigo 25/06; maíz 17, 18 y 21/09; soja 09 y 10/11). Soja: noviembre en curso.
   var COTIZACIONES_2627 = [
-    { cultivo: "Trigo", mes: 1, contrato: "TRI.ROS/ENE27", valor: null, fecha: null, fuente: null },
-    { cultivo: "Soja", mes: 5, contrato: "SOJ.ROS/MAY27", valor: null, fecha: null, fuente: null },
-    { cultivo: "Maíz", mes: 4, contrato: "MAI.ROS/ABR27", valor: null, fecha: null, fuente: null }
+    { cultivo: "Trigo", mes: 1, contrato: "TRI.ROS/ENE27", valor: 214.73, fecha: "2026-06-30",
+      fuente: "PPP de junio 2026 (20 ruedas), Boletín Diario de la Bolsa de Comercio de Rosario" },
+    { cultivo: "Soja", mes: 5, contrato: "SOJ.ROS/MAY27", valor: 342.16, fecha: "2026-11-16",
+      fuente: "PPP de noviembre 2026 hasta el 16/11 (9 ruedas, mes en curso), Boletín Diario de la Bolsa de Comercio de Rosario" },
+    { cultivo: "Maíz", mes: 4, contrato: "MAI.ROS/ABR27", valor: 206.88, fecha: "2026-09-30",
+      fuente: "PPP de septiembre 2026 (19 ruedas), Boletín Diario de la Bolsa de Comercio de Rosario" }
   ];
   var CONTRATOS_2627 = {};
   COTIZACIONES_2627.forEach(function (f) { CONTRATOS_2627[f.cultivo] = f.contrato; });
   var ROTULO_REFERENCIA = "referencia: futuro de siembra 2025/26 — actualizalo con la cotización del día";
 
   // Límites de plausibilidad de cada entrada (para que un texto mal leído no pase en silencio).
+  // Tope de la campaña: la tesis estudia al pequeño y mediano productor, hasta 1.000 ha en total (suma de todos los cultivos).
+  var HECTAREAS_MAX_TOTAL = 1000;
   var LIMITES = {
     hectareas: { min: 0, max: 100000, texto: "hectáreas" },
     rinde: { min: 0, max: 30, minExclusivo: true, texto: "rinde esperado (t/ha)" },
@@ -117,27 +126,16 @@
     };
   }
 
-  function distanciaMeses(a, b) {
-    var d = Math.abs(a - b) % 12;
-    return Math.min(d, 12 - d);
-  }
-
-  // F27 de un cultivo para un mes de cosecha 2026/27 (por defecto, el del calendario de la tesis). Se toma el precio del contrato que vence
-  // en ese mes; si no hay uno cargado, el contrato cargado más cercano (y lo dice en `aviso`). Sin cotización cargada (valor null), el
-  // Fs de la última campaña, bien rotulado como referencia.
-  function futuro2627(datos, cultivo, zona, mesCosecha) {
-    var pedido = mesCosecha || CALENDARIO[cultivo].cosecha;
+  // F27 de un cultivo: el precio del contrato que vence en el mes de cosecha fijo de la tesis (CALENDARIO). Sin cotización cargada
+  // (valor null), el Fs de la última campaña, bien rotulado como referencia.
+  function futuro2627(datos, cultivo, zona) {
     var fila = null;
-    COTIZACIONES_2627.forEach(function (f) {
-      if (f.cultivo === cultivo && (!fila || distanciaMeses(f.mes, pedido) < distanciaMeses(fila.mes, pedido))) fila = f;
-    });
+    COTIZACIONES_2627.forEach(function (f) { if (f.cultivo === cultivo && f.mes === CALENDARIO[cultivo].cosecha) fila = f; });
     if (!fila) throw new Error("No hay contratos 2026/27 cargados de " + cultivo + ".");
-    var aproximado = fila.mes !== pedido;
-    var aviso = aproximado ? "No hay un precio cargado para un contrato de " + MESES[pedido - 1] + "; usamos el contrato cargado más cercano (" + fila.contrato + ", " + MESES[fila.mes - 1] + ")." : "";
     var salida;
     if (esFinito(fila.valor) && fila.fecha && fila.fuente) {
       salida = { valor: fila.valor, fecha: fila.fecha, fuente: fila.fuente, esReferencia: false,
-        origen: "Cotización " + fila.contrato + " al " + fila.fecha + " — fuente: " + fila.fuente };
+        origen: "Boletín Diario BCR › " + fila.contrato + " › " + fila.fuente.replace(/, Boletín Diario de la Bolsa de Comercio de Rosario$/, "") + " al " + fila.fecha };
     } else {
       var ultimo = casosOrdenados(datos, cultivo, zona).slice(-1)[0];
       salida = { valor: ultimo.fs, fecha: null, fuente: null, esReferencia: true,
@@ -145,9 +143,6 @@
     }
     salida.contrato = fila.contrato;
     salida.mesUsado = fila.mes;
-    salida.mesPedido = pedido;
-    salida.aproximado = aproximado;
-    salida.aviso = aviso;
     return salida;
   }
 
@@ -345,14 +340,14 @@
     var resultado = { h: hTotal, mbTotal: mbTotal, mbHa: mbTotal / haTotal, ingresoTotal: ingTotal, ingresoHa: ingTotal / haTotal,
       comisionTotal: comTotal, r: mbTotal / valorTotal, porCultivo: porCultivo };
 
-    // Seis escenarios históricos: las sorpresas de precio de cada campaña de la tesis aplicadas al F27.
+    // Seis escenarios históricos: las sorpresas de precio de cada campaña de la tesis: lo no cubierto alrededor del spot proyectado, lo cubierto anclado al F27.
     var r = [], mbHa = [];
     vista.campanas.forEach(function (campana, t) {
       var mb = 0;
       nombres.forEach(function (cultivo) {
         var i = vista.cultivos[cultivo];
         var caso = i.casos[t];
-        var sin = i.f27 * caso.sc / caso.fs;
+        var sin = i.precios.spotProyectado * caso.sc / caso.fs;
         var cub = i.f27 * (1 + (caso.sc - caso.fc) / caso.fs);
         var precio = hp[cultivo] * cub + (1 - hp[cultivo]) * sin;
         mb += i.ha * margenPorHa(i, precio, hp[cultivo], vista.comision).mb;
@@ -498,6 +493,12 @@
     });
     if (!claves.length) errores.cultivos = "Elegí al menos un cultivo.";
     else if (!algunCultivo && !Object.keys(errores).length) errores.cultivos = "Cargá hectáreas en al menos un cultivo.";
+    var haTotal = 0;
+    claves.forEach(function (c) { if (entrada.cultivos[c].ha > 0) haTotal += entrada.cultivos[c].ha; });
+    if (haTotal > HECTAREAS_MAX_TOTAL) {
+      errores.haTotal = "Cargaste " + haTotal.toLocaleString("es-AR") + " hectáreas y el tope es " + HECTAREAS_MAX_TOTAL.toLocaleString("es-AR") +
+        ": te sobran " + (haTotal - HECTAREAS_MAX_TOTAL).toLocaleString("es-AR") + ". Este simulador es para campos de hasta 1.000 hectáreas en total.";
+    }
     if (Object.keys(errores).length) return { entrada: null, errores: errores };
     // Los cultivos sin hectáreas no entran al cálculo.
     claves.forEach(function (cultivo) { if (!(entrada.cultivos[cultivo].ha > 0)) delete entrada.cultivos[cultivo]; });
@@ -518,6 +519,7 @@
     hPorCultivo: hPorCultivo,
     ROTULO_REFERENCIA: ROTULO_REFERENCIA,
     LIMITES: LIMITES,
+    HECTAREAS_MAX_TOTAL: HECTAREAS_MAX_TOTAL,
     leerDecimal: leerDecimal,
     zonas: zonas,
     cultivosDeZona: cultivosDeZona,

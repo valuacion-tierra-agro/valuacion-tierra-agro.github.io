@@ -274,7 +274,7 @@
     "El rinde es el promedio de los departamentos de cada zona (MAGyP), no el de un campo en particular.",
     "Los costos directos son los de un planteo de Márgenes Agropecuarios, no los de un campo real.",
     "La cobertura se hace una sola vez, al sembrar, y se mantiene hasta la cosecha.",
-    "El desvío del rinde no es sólo clima: también influyen el manejo, las plagas y otras causas.",
+    "El desvío del rinde tiene varias causas, como el manejo y las plagas.",
     "El valor de la tierra es el promedio provincial del año de cosecha.",
     "No se usa la hoja 6_Retorno_Total del libro de CAPM porque tiene pegada la rentabilidad calculada sin el costo de cosecha."
   ];

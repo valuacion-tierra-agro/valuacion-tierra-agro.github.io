@@ -1,11 +1,11 @@
 // Ayudas comunes para los gráficos de Apache ECharts de las secciones 2, 3 y 4 (precios, valor de la tierra y
-// costo de oportunidad): colores del tema de la página (modo claro y oscuro), animación y redibujado.
+// costo de oportunidad): colores del tema de la página (oscuro en pantalla), animación y redibujado.
 // Si ECharts no está cargado (por ejemplo en las pruebas, con el DOM falso) no dibuja nada: cada sección igual
 // muestra todas sus cifras en tablas y en texto.
 (function (raiz) {
   "use strict";
 
-  // Lee una variable CSS de :root (el tema vigente, claro u oscuro); si no hay estilos calculados, usa el respaldo.
+  // Lee una variable CSS de :root (el tema vigente); si no hay estilos calculados, usa el respaldo (los colores de Carbon en oscuro).
   function colorDe(nombre, respaldo) {
     try {
       if (typeof raiz.getComputedStyle === "function" && raiz.document.documentElement) {
@@ -23,13 +23,15 @@
   // Colores y tipografía del tema vigente, listos para el `option` de ECharts.
   function tema() {
     return {
-      texto: colorDe("color-texto", "#222"),
-      suave: colorDe("color-texto-suave", "#666"),
-      borde: colorDe("color-borde", "#ccc"),
-      superficie: colorDe("color-superficie", "#fff"),
+      texto: colorDe("color-texto", "#f4f4f4"),
+      suave: colorDe("color-texto-suave", "#c6c6c6"),
+      borde: colorDe("color-borde", "#393939"),
+      bordeFuerte: colorDe("color-borde-fuerte", "#6f6f6f"),
+      superficie: colorDe("color-superficie", "#262626"),
+      superficie2: colorDe("color-superficie-2", "#393939"),
       fuente: colorDe("fuente-texto", "sans-serif"),
       animar: !sinAnimacion(),
-      cultivos: { Trigo: colorDe("color-trigo", "#856412"), Soja: colorDe("color-soja", "#3f6b27"), "Maíz": colorDe("color-maiz", "#9c540c") }
+      cultivos: { Trigo: colorDe("color-trigo", "#f1c21b"), Soja: colorDe("color-soja", "#08bdba"), "Maíz": colorDe("color-maiz", "#eb6200") }
     };
   }
 
@@ -37,14 +39,29 @@
     return { color: t.texto, fontFamily: t.fuente, fontSize: 13 };
   }
 
+  // Aviso flotante del tema: capa más clara que la página, línea fina y sin esquinas redondas ni sombra
+  // (si no, ECharts lo dibuja como una caja blanca).
+  function tooltipDelTema(t, extra) {
+    var o = {
+      backgroundColor: t.superficie2, borderColor: t.bordeFuerte, borderWidth: 1,
+      textStyle: { color: t.texto, fontFamily: t.fuente },
+      extraCssText: "border-radius:0;box-shadow:none;"
+    };
+    Object.keys(extra || {}).forEach(function (k) { o[k] = extra[k]; });
+    return o;
+  }
+
   // Un gráfico de líneas con los ejes y la leyenda del tema. `formatoY` pinta el eje vertical y el aviso flotante.
   function opcionDeLineas(t, categorias, series, formatoY, opciones) {
     opciones = opciones || {};
     return {
       animation: t.animar, textStyle: estiloTexto(t), grid: { left: 64, right: 16, top: 48, bottom: 32 },
-      legend: { top: 0, type: "scroll", textStyle: { color: t.texto, fontFamily: t.fuente } },
-      tooltip: { trigger: "axis", valueFormatter: function (x) { return x === null || x === undefined ? "—" : formatoY(x); } },
-      xAxis: { type: "category", data: categorias, boundaryGap: false, axisLabel: { color: t.texto }, axisLine: { lineStyle: { color: t.borde } } },
+      legend: {
+        top: 0, type: "scroll", textStyle: { color: t.texto, fontFamily: t.fuente }, inactiveColor: t.bordeFuerte,
+        pageTextStyle: { color: t.texto }, pageIconColor: t.texto, pageIconInactiveColor: t.bordeFuerte
+      },
+      tooltip: tooltipDelTema(t, { trigger: "axis", axisPointer: { lineStyle: { color: t.bordeFuerte } }, valueFormatter: function (x) { return x === null || x === undefined ? "—" : formatoY(x); } }),
+      xAxis: { type: "category", data: categorias, boundaryGap: false, axisLabel: { color: t.texto }, axisLine: { lineStyle: { color: t.bordeFuerte } }, axisTick: { lineStyle: { color: t.bordeFuerte } } },
       yAxis: { type: "value", scale: !!opciones.escalar, axisLabel: { color: t.suave, formatter: function (x) { return formatoY(x); } }, splitLine: { lineStyle: { color: t.borde } } },
       series: series.map(function (s) {
         return {
@@ -88,7 +105,7 @@
     return { dibujar: dibujar, redimensionar: redimensionar, instancias: graficos };
   }
 
-  var api = { colorDe: colorDe, tema: tema, estiloTexto: estiloTexto, opcionDeLineas: opcionDeLineas, crear: crear };
+  var api = { colorDe: colorDe, tema: tema, estiloTexto: estiloTexto, tooltipDelTema: tooltipDelTema, opcionDeLineas: opcionDeLineas, crear: crear };
   raiz.TESIS_EC = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

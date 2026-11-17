@@ -19,16 +19,18 @@
   var MAX_NOMBRE = 60;
   var ANCHO_IMPRESION = 340;   // px de cada gráfico en la hoja A4 (dos por renglón)
   var ALTO_IMPRESION = 250;
-  // Colores de los gráficos en papel blanco: fijos y oscuros, aunque la pantalla esté en modo oscuro.
+  // Colores de los gráficos en papel blanco: fijos y oscuros, aunque la pantalla sea oscura. Son los mismos valores que
+  // redefine el :root de @media print en css/estilos.css (más el fondo y las capas que usan el aviso flotante y la leyenda).
   var PALETA_IMPRESION = {
-    "color-texto": "#111111", "color-texto-suave": "#444444", "color-borde": "#bbbbbb", "color-superficie": "#ffffff",
-    "color-trigo": "#856412", "color-soja": "#3f6b27", "color-maiz": "#9c540c",
-    "color-sin": "#b7791f", "color-acento": "#7a3e1d", "color-con": "#1f7a7a"
+    "color-texto": "#161616", "color-texto-suave": "#525252", "color-borde": "#c6c6c6", "color-borde-fuerte": "#8d8d8d",
+    "color-fondo": "#ffffff", "color-superficie": "#ffffff", "color-superficie-2": "#f4f4f4",
+    "color-trigo": "#8e6a00", "color-soja": "#007d79", "color-maiz": "#ba4e00",
+    "color-sin": "#8e6a00", "color-acento": "#0f62fe", "color-con": "#005d5d"
   };
 
   // estado: { paso, cargado, zona, cultivos: [..], usaFuturos: null|true|false, h (la del asistente: { cultivo: proporción cubierta }),
   //   hVer (la que se mira en los resultados, también por cultivo), rindeModo: { cultivo: "zona"|"propio" }, rindeQq: { cultivo: texto en qq/ha },
-  //   textos: { cultivo: { ha, rinde (t/ha), cd, cc, gc } }, meses: { cultivo: { siembra, cosecha } }, v, defs, vDef }
+  //   textos: { cultivo: { ha, rinde (t/ha), cd, cc, gc } }, v, defs, vDef }
   var estado = null;
   var nodos = {};        // nodos fijos de la pantalla
   var graficos = {};     // instancias de ECharts
@@ -66,11 +68,8 @@
     return { ha: ha, rinde: coma(d.rinde, 2), cd: coma(d.cd, 0), cc: coma(d.cc, 1), gc: coma(d.gc, 1) };
   }
 
-  function mesesPorDefecto(cultivo) {
-    return { siembra: C().CALENDARIO[cultivo].siembra, cosecha: C().CALENDARIO[cultivo].cosecha };
-  }
 
-  // Estado de una zona. `previo` conserva cultivos, hectáreas, meses y respuestas. `conEjemplo` pone cultivos y hectáreas de ejemplo
+  // Estado de una zona. `previo` conserva cultivos, hectáreas y respuestas. `conEjemplo` pone cultivos y hectáreas de ejemplo
   // (sólo para abrir un link de escenario incompleto: el asistente arranca vacío).
   function estadoNuevo(zona, previo, conEjemplo) {
     var dz = defectosDeZona(zona);
@@ -78,11 +77,10 @@
     var cultivos = previo ? previo.cultivos.filter(function (c) { return disponibles.indexOf(c) >= 0; }) : [];
     if (!cultivos.length && conEjemplo) cultivos = PARTES_INICIALES.filter(function (c) { return disponibles.indexOf(c) >= 0; });
     if (!cultivos.length && conEjemplo) cultivos = disponibles.slice(0, 1);
-    var textos = {}, meses = {};
+    var textos = {};
     disponibles.forEach(function (c) {
       var ha = previo && previo.textos[c] ? previo.textos[c].ha : (conEjemplo ? String(HECTAREAS_INICIALES[c]) : "");
       textos[c] = textosPorDefecto(dz.defs[c], ha);
-      meses[c] = previo && previo.meses[c] ? previo.meses[c] : mesesPorDefecto(c);
     });
     var rindeModo = {}, rindeQq = {};
     disponibles.forEach(function (c) {
@@ -93,13 +91,13 @@
       paso: previo ? previo.paso : 1, cargado: false, zona: zona, cultivos: cultivos,
       usaFuturos: previo ? previo.usaFuturos : null, h: previo ? Object.assign({}, previo.h) : {}, hVer: previo ? Object.assign({}, previo.hVer) : {},
       rindeModo: rindeModo, rindeQq: rindeQq,
-      textos: textos, meses: meses, v: coma(dz.v.v, 0), defs: dz.defs, vDef: dz.v
+      textos: textos, v: coma(dz.v.v, 0), defs: dz.defs, vDef: dz.v
     };
   }
 
   // Estado antes de elegir la zona: nada cargado.
   function estadoVacio() {
-    return { paso: 1, cargado: false, zona: null, cultivos: [], usaFuturos: null, h: {}, hVer: {}, rindeModo: {}, rindeQq: {}, textos: {}, meses: {}, v: "", defs: {}, vDef: null };
+    return { paso: 1, cargado: false, zona: null, cultivos: [], usaFuturos: null, h: {}, hVer: {}, rindeModo: {}, rindeQq: {}, textos: {}, v: "", defs: {}, vDef: null };
   }
 
   // --- Proporción cubierta por cultivo ---
@@ -136,9 +134,9 @@
     return estado.defs[cultivo][campo];
   }
 
-  // El F27 de un cultivo con el mes de cosecha elegido: sale de la tabla de cotizaciones de campana.js, nunca lo carga el productor.
+  // El F27 de un cultivo (contrato fijo de su mes de cosecha): sale de la tabla de cotizaciones de campana.js, nunca lo carga el productor.
   function futuroDe(cultivo) {
-    return C().futuro2627(null, cultivo, estado.zona, estado.meses[cultivo].cosecha);
+    return C().futuro2627(null, cultivo, estado.zona);
   }
 
   function comisionFija() { return C().comisionPorDefecto(); }
@@ -194,10 +192,6 @@
     return { contenedor: contenedor, input: input, nota: nota, error: error };
   }
 
-  function opcionesDeMeses() {
-    return C().MESES.map(function (m, i) { return el("option", { value: String(i + 1) }, m); });
-  }
-
   function nodoDeZona(zona) {
     var d = C().detalleDeZona(zona);
     var b = el("button", { type: "button", "class": "sc-zona-tarjeta", "aria-pressed": "false", "data-zona": zona }, [
@@ -235,6 +229,10 @@
   function montarPasoCultivos(cont) {
     cont.appendChild(el("h3", null, "¿Qué sembrás?"));
     cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Tocá los cultivos de esta campaña (los que la tesis tiene para tu zona) y escribí cuántas hectáreas le dedicás a cada uno."));
+    cont.appendChild(el("p", { "class": "sc-nota sc-tope-ha", id: "sc-tope-ha" }, "Este simulador está pensado para campos de hasta " + fmMiles(C().HECTAREAS_MAX_TOTAL) + " hectáreas en total, el tamaño de productor que estudia la tesis."));
+    nodos.contadorHa = el("p", { "class": "sc-nota sc-contador-ha", id: "sc-contador-ha", "aria-live": "polite" });
+    cont.appendChild(nodos.contadorHa);
+    cont.appendChild(el("p", { "class": "sc-nota sc-explica-fechas", id: "sc-explica-fechas" }, "Usamos las fechas típicas de cada cultivo en la Región Pampeana, las mismas de la tesis. Cubrirte es vender hoy un contrato que vence cuando cosechás. Así, el precio que fijás hoy es el que vas a cobrar en ese momento."));
     nodos.chips = {};
     var fila = el("div", { "class": "sc-chips", role: "group", "aria-label": "Cultivos" });
     C().CULTIVOS.forEach(function (cultivo) {
@@ -250,19 +248,12 @@
     nodos.bloquesHa = {};
     nodos.calendario = {};
     C().CULTIVOS.forEach(function (cultivo) {
-      var campoHa = crearCampo(idCampo(cultivo, "ha"), "Hectáreas de " + cultivo.toLowerCase(), "ha", function (valor) { estado.textos[cultivo].ha = valor; revalidarSiHayError(); });
+      var campoHa = crearCampo(idCampo(cultivo, "ha"), "Hectáreas de " + cultivo.toLowerCase(), "ha", function (valor) { estado.textos[cultivo].ha = valor; pintarContadorHa(); revalidarSiHayError(); });
       nodos.campos[cultivo] = { ha: campoHa };
-      var selSiembra = el("select", { id: idCampo(cultivo, "siembra") }, opcionesDeMeses());
-      var selCosecha = el("select", { id: idCampo(cultivo, "cosecha") }, opcionesDeMeses());
       var nota = el("p", { "class": "sc-nota", id: idCampo(cultivo, "calendario-nota") });
-      selSiembra.addEventListener("change", function () { estado.meses[cultivo].siembra = Number(selSiembra.value); pintarCalendario(cultivo); });
-      selCosecha.addEventListener("change", function () { estado.meses[cultivo].cosecha = Number(selCosecha.value); pintarCalendario(cultivo); });
-      nodos.calendario[cultivo] = { siembra: selSiembra, cosecha: selCosecha, nota: nota };
+      nodos.calendario[cultivo] = { nota: nota };
       var cal = el("div", { "class": "sc-calendario-carga" }, [
-        el("p", { "class": "sc-titulo-grupo" }, "¿Sembrás y cosechás en estas fechas?"),
-        el("div", { "class": "sc-calendario-fila" }, [
-          el("label", { "for": idCampo(cultivo, "siembra") }, "Siembra"), selSiembra,
-          el("label", { "for": idCampo(cultivo, "cosecha") }, "Cosecha"), selCosecha]),
+        el("p", { "class": "sc-titulo-grupo" }, "Fechas de la tesis para " + cultivo.toLowerCase()),
         nota]);
       var bloque = el("fieldset", { "class": "sc-cultivo", "data-cultivo": cultivo }, [el("legend", null, cultivo), campoHa.contenedor, cal]);
       nodos.bloquesHa[cultivo] = bloque;
@@ -270,13 +261,31 @@
     });
   }
 
+  function fmMiles(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+  // Hectáreas cargadas hoy (suma de los cultivos elegidos; lo que no es un número entero cuenta como 0).
+  function hectareasCargadas() {
+    return estado.cultivos.reduce(function (s, c) {
+      var t = String(estado.textos[c] ? estado.textos[c].ha : "").trim();
+      var n = /^\d+$/.test(t) ? Number(t) : /^\d{1,3}(\.\d{3})+$/.test(t) ? Number(t.replace(/\./g, "")) : 0;
+      return s + n;
+    }, 0);
+  }
+
+  function pintarContadorHa() {
+    if (!nodos.contadorHa || !estado) return;
+    var tope = C().HECTAREAS_MAX_TOTAL, n = hectareasCargadas();
+    nodos.contadorHa.textContent = "Llevás " + fmMiles(n) + " de " + fmMiles(tope) + " hectáreas." +
+      (n > tope ? " Te pasás por " + fmMiles(n - tope) + ": bajá algún cultivo para poder seguir." : "");
+    nodos.contadorHa.setAttribute("data-excedido", n > tope ? "true" : "false");
+  }
+
+  // Fechas fijas de la tesis de un cultivo (sólo lectura): siembra, cosecha y el contrato que corresponde.
   function pintarCalendario(cultivo) {
     var n = nodos.calendario[cultivo];
-    if (!n || !estado.zona || !estado.meses[cultivo]) return;
-    var f = futuroDe(cultivo);
-    var texto = "Usamos el precio del contrato " + f.contrato + ", que vence en " + C().MESES[f.mesUsado - 1] + " de 2027. La siembra es sólo informativa: no cambia ninguna cuenta.";
-    if (f.aviso) texto += " " + f.aviso;
-    n.nota.textContent = texto;
+    if (!n || !estado.zona) return;
+    var f = futuroDe(cultivo), cal = C().CALENDARIO[cultivo];
+    n.nota.textContent = "Siembra en " + textoMes(cal.siembra) + ", cosecha en " + textoMes(cal.cosecha) + ". Contrato " + f.contrato + ", que vence en " + textoMes(f.mesUsado) + " de 2027.";
   }
 
   function montarPasoRinde(cont) {
@@ -464,7 +473,7 @@
       }
     });
     Object.keys(todos).forEach(function (k) {
-      var pasoDe = k === "cultivos" || /\.ha$/.test(k) ? 2 : /\.rinde$/.test(k) ? 3 : 4;
+      var pasoDe = k === "cultivos" || k === "haTotal" || /\.ha$/.test(k) ? 2 : /\.rinde$/.test(k) ? 3 : 4;
       if (!paso || pasoDe === paso) e[k] = todos[k];
     });
     if ((!paso || paso === 4) && estado.usaFuturos === null) e.futuros = "Contanos si usás futuros: tocá Sí o No.";
@@ -521,8 +530,6 @@
         nodos.campos[c].ha.input.value = estado.textos[c].ha;
         sincronizarRinde(c);
         ["cd", "cc", "gc"].forEach(function (campo) { nodos.campos[c][campo].input.value = estado.textos[c][campo]; });
-        nodos.calendario[c].siembra.value = String(estado.meses[c].siembra);
-        nodos.calendario[c].cosecha.value = String(estado.meses[c].cosecha);
       }
     });
     nodos.v.input.value = estado.v;
@@ -530,6 +537,7 @@
     nodos.nombrePersona.input.value = nombres.persona;
     sincronizarFuturos();
     pintarNotas();
+    pintarContadorHa();
     sincronizarPaso();
   }
 
@@ -561,7 +569,7 @@
     hayErrorVisible = Object.keys(errs).length > 0;
     pintarErrores(errs);
     if (hayErrorVisible) {
-      var pasoDeError = errs.zona ? 1 : (errs.cultivos || Object.keys(errs).some(function (k) { return /\.ha$/.test(k); })) ? 2 : Object.keys(errs).some(function (k) { return /\.rinde$/.test(k); }) ? 3 : 4;
+      var pasoDeError = errs.zona ? 1 : (errs.cultivos || errs.haTotal || Object.keys(errs).some(function (k) { return /\.ha$/.test(k); })) ? 2 : Object.keys(errs).some(function (k) { return /\.rinde$/.test(k); }) ? 3 : 4;
       if (pasoDeError !== estado.paso) { estado.paso = pasoDeError; sincronizarPaso(); pintarErrores(errs); }
       return;
     }
@@ -677,7 +685,7 @@
 
   // --- Link para compartir el escenario (no lleva los nombres) ---
 
-  var CLAVES_LINK = ["z", "c", "ha", "ri", "h", "ms", "mc"];
+  var CLAVES_LINK = ["z", "c", "ha", "ri", "h"];   // ms y mc (meses) de links viejos no se leen: las fechas son fijas
 
   function baseDelLink() {
     var l = raiz.location;
@@ -687,16 +695,15 @@
   }
 
   // Parte que va después de «#campana?»: zona, cultivos, hectáreas, rindes (en t/ha), cobertura de cada cultivo (h=50,0 en el orden de «c»; si es la
-  // misma para todos, un solo número, como en los links viejos) y meses de siembra y de cosecha. Los precios futuros y la
+  // misma para todos, un solo número, como en los links viejos) (sin meses: las fechas son fijas). Los precios futuros y la
   // comisión no van: salen de la tabla interna de cotizaciones y de la comisión fija de la tesis.
   function armarQuery(e) {
     var enc = encodeURIComponent;
     var lista = function (campo, f) { return e.cultivos.map(function (c) { return enc(f(String(e.textos[c][campo]).trim())); }).join(","); };
     var punto = function (t) { return t.replace(/,/g, "."); };
     var entero = function (t) { return /^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, "") : t; };
-    var meses = function (clave) { return e.cultivos.map(function (c) { return e.meses[c][clave]; }).join(","); };
     return ["z=" + enc(e.zona), "c=" + e.cultivos.map(enc).join(","), "ha=" + lista("ha", entero), "ri=" + lista("rinde", punto),
-      "h=" + (hUniforme(hDe(e.h, e.cultivos)) !== null ? Math.round(hUniforme(hDe(e.h, e.cultivos)) * 100) : e.cultivos.map(function (c) { return Math.round((e.h[c] || 0) * 100); }).join(",")), "ms=" + meses("siembra"), "mc=" + meses("cosecha")].join("&");
+      "h=" + (hUniforme(hDe(e.h, e.cultivos)) !== null ? Math.round(hUniforme(hDe(e.h, e.cultivos)) * 100) : e.cultivos.map(function (c) { return Math.round((e.h[c] || 0) * 100); }).join(","))].join("&");
   }
 
   // El link del escenario actual, o null si todavía no hay resultados (no hay escenario válido que compartir).
@@ -777,17 +784,7 @@
         estado.textos[c][par[1]] = par[1] === "ha" ? texto.trim() : aComa(texto.trim());
       });
     });
-    [["ms", "siembra", "el mes de siembra"], ["mc", "cosecha", "el mes de cosecha"]].forEach(function (par) {
-      if (q[par[0]] === undefined) return;
-      var lista = q[par[0]].split(",");
-      estado.cultivos.forEach(function (c) {
-        var crudo = lista[posicion[c]];
-        var texto = crudo === undefined ? null : decodificar(crudo);
-        var n = texto !== null && /^\d{1,2}$/.test(texto.trim()) ? Number(texto.trim()) : 0;
-        if (n >= 1 && n <= 12) estado.meses[c][par[1]] = n;
-        else nota(par[2] + " de " + c);
-      });
-    });
+    // Los meses de siembra y cosecha (ms, mc) de links viejos se ignoran: las fechas son fijas.
     if (q.h !== undefined) {
       // Un solo número (links viejos) vale para todos los cultivos; una lista va en el orden de «c».
       var lista = q.h.split(",");
@@ -820,6 +817,7 @@
       if (!claves.length) break;
       claves.forEach(function (k) {
         if (k === "v") { estado.v = coma(estado.vDef.v, 0); }
+        else if (k === "haTotal") { estado.cultivos.forEach(function (c) { estado.textos[c].ha = porDefecto(c, "ha"); }); nota("las hectáreas (el total pasaba de " + fmMiles(C().HECTAREAS_MAX_TOTAL) + ")"); }
         else if (k === "cultivos") { estado.cultivos.forEach(function (c) { estado.textos[c].ha = porDefecto(c, "ha"); }); nota("las hectáreas"); }
         else if (k !== "comision") {
           var partes = k.split(".");
@@ -1041,17 +1039,31 @@
     base().vaciar(cont);
     var items = v.nombres.map(function (c) {
       var f = futuroDe(c);
-      var m = estado.meses[c];
+      var m = C().CALENDARIO[c];
       return el("li", null, [el("strong", null, c + ": "), "siembra en " + textoMes(m.siembra) + ", cosecha en " + textoMes(m.cosecha) + ". Contrato " + f.contrato + "."]);
     });
-    cont.appendChild(el("p", { "class": "sc-titulo-grupo" }, "Tu calendario y el contrato que te corresponde"));
+    cont.appendChild(el("p", { "class": "sc-titulo-grupo" }, "Las fechas de la tesis y el contrato que te corresponde"));
     cont.appendChild(el("ul", { "class": "sc-lista-calendario" }, items));
-    var avisos = v.nombres.map(function (c) { return futuroDe(c).aviso; }).filter(function (a) { return a; });
-    if (avisos.length) cont.appendChild(el("p", { "class": "sc-nota" }, avisos.join(" ")));
     var hayReferencia = v.nombres.some(function (c) { return futuroDe(c).esReferencia; });
     cont.appendChild(el("p", { "class": "sc-aviso", role: "note" }, hayReferencia
       ? [el("strong", null, "Precio de referencia. "), "El precio futuro 2026/27 que usamos es el futuro de siembra 2025/26 de la tesis, no una cotización de hoy. Cuando el grupo consiga las cotizaciones reales se cargan en un único lugar y se actualiza todo."]
       : "El precio futuro 2026/27 es la cotización del contrato que vence en tu mes de cosecha."));
+  }
+
+  // Fecha y fuente del precio 2026/27 de cada cultivo, sacadas de la tabla de cotizaciones (nada tipeado a mano).
+  function textoFuenteF27(v) {
+    var partes = [], hayRef = false;
+    v.nombres.forEach(function (c) {
+      var f = futuroDe(c);
+      if (f.esReferencia || !f.fecha) { hayRef = true; return; }
+      var p = f.fecha.split("-"), dia = +p[2], mes = +p[1];
+      var ultimo = new Date(+p[0], mes, 0).getDate();
+      var corta = dia + "/" + mes;
+      partes.push(c + ": " + (dia < ultimo ? textoMes(mes) + " en curso, al " + corta : textoMes(mes) + ", al cierre del " + corta));
+    });
+    if (!partes.length) return "";
+    return "Precio futuro 2026/27: promedio de las ruedas del mes de siembra, Bolsa de Comercio de Rosario. " + partes.join(". ")
+      + (hayRef ? ". Los demás cultivos usan una referencia, no una cotización." : ".");
   }
 
   function pintarPropuesta(v) {
@@ -1074,6 +1086,7 @@
     cont.appendChild(el("h3", null, "Nuestra propuesta: cubrir con futuros"));
     cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Cubrir es fijar hoy el precio de una parte de tu cosecha. Probá cuánto cubrir de cada cultivo y mirá qué cambia. "
       + (estado.usaFuturos ? "Arrancamos en lo que nos contaste: " + textoH(hDe(estado.h, v.nombres)) + "." : "Arrancamos sin cubrir, como hoy.")));
+    cont.appendChild(el("p", { "class": "sc-ayuda-paso", "data-fuente-f27": "1" }, textoFuenteF27(v)));
     nodos.botonesH = {};
     var filas = el("div", { "class": "sc-simulador-filas" });
     v.nombres.forEach(function (cultivo) {
@@ -1228,11 +1241,11 @@
     // Detalle por campaña (R de cada escenario).
     var cabE = filaTabla(["Cubierto"].concat(v.campanas), true);
     var filasE = lineas.map(function (l) {
-      return filaTabla([l.nombre].concat(l.esc.r.map(function (r) { return num(r, "porcentaje", o("R con la sorpresa de precio de esa campaña aplicada al F27")); })));
+      return filaTabla([l.nombre].concat(l.esc.r.map(function (r) { return num(r, "porcentaje", o("R con la sorpresa de precio de esa campaña aplicada al spot proyectado (sin cubrir) y al F27 (cubierto)")); })));
     });
     cont.appendChild(el("details", { "class": "sc-detalle-escenarios" }, [el("summary", null, "Ver R en cada uno de los seis escenarios"),
       el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sc-tabla" }, [el("thead", null, cabE), el("tbody", null, filasE)])),
-      el("p", { "class": "ayuda" }, "Cada escenario aplica al F27 la sorpresa de precio de una campaña de la tesis. Sin cubrir: P = F27 × Sc ÷ Fs. Cubierto: P = F27 × (1 + (Sc − Fc) ÷ Fs). Mezcla: según la proporción cubierta.")]));
+      el("p", { "class": "ayuda" }, "Cada escenario aplica la sorpresa de precio de una campaña de la tesis. Sin cubrir: P = spot proyectado × Sc ÷ Fs. Cubierto: P = F27 × (1 + (Sc − Fc) ÷ Fs). Mezcla: según la proporción cubierta.")]));
   }
 
   function pintarLectura(v) {
@@ -1287,49 +1300,61 @@
   }
 
   function textoBase() {
-    return { color: colorDe("color-texto", "#222"), fontFamily: colorDe("fuente-texto", "sans-serif"), fontSize: 13 };
+    return { color: colorDe("color-texto", "#f4f4f4"), fontFamily: colorDe("fuente-texto", "sans-serif"), fontSize: 13 };
+  }
+
+  // Aviso flotante del tema (en oscuro, ECharts lo dibuja blanco si no se le dice): capa, línea fina, sin esquinas redondas ni sombra.
+  function tooltipDelTema(extra) {
+    var t = {
+      backgroundColor: colorDe("color-superficie-2", "#393939"), borderColor: colorDe("color-borde-fuerte", "#6f6f6f"), borderWidth: 1,
+      textStyle: { color: colorDe("color-texto", "#f4f4f4"), fontFamily: colorDe("fuente-texto", "sans-serif") },
+      extraCssText: "border-radius:0;box-shadow:none;"
+    };
+    Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
+    return t;
   }
 
   function dibujarGraficos(v) {
     if (nodos.mas && nodos.mas.hidden && !imprimiendo) return;
     if (!raiz.echarts) return;
     var fm = base().formato;
-    var colores = { Trigo: colorDe("color-trigo", "#9a5b00"), Soja: colorDe("color-soja", "#2e7d32"), "Maíz": colorDe("color-maiz", "#b8860b") };
+    var colores = { Trigo: colorDe("color-trigo", "#f1c21b"), Soja: colorDe("color-soja", "#08bdba"), "Maíz": colorDe("color-maiz", "#eb6200") };
     var txt = textoBase();
-    var suave = colorDe("color-texto-suave", "#666");
-    var borde = colorDe("color-borde", "#ccc");
+    var suave = colorDe("color-texto-suave", "#c6c6c6");
+    var borde = colorDe("color-borde", "#393939");
+    var bordeFuerte = colorDe("color-borde-fuerte", "#6f6f6f");
     var anim = !sinAnimacion();
 
     dibujar("torta", nodos.graficoTorta, {
       animation: anim, textStyle: txt,
-      tooltip: { trigger: "item", formatter: function (p) { return p.name + ": " + fm.entero(p.value) + " ha (" + fm.porcentaje(p.percent / 100) + ")"; } },
-      series: [{ type: "pie", radius: ["42%", "70%"], avoidLabelOverlap: true, itemStyle: { borderColor: colorDe("color-superficie", "#fff"), borderWidth: 2 },
-        label: { show: false }, labelLine: { show: false },
+      tooltip: tooltipDelTema({ trigger: "item", formatter: function (p) { return p.name + ": " + fm.entero(p.value) + " ha (" + fm.porcentaje(p.percent / 100) + ")"; } }),
+      series: [{ type: "pie", radius: ["42%", "70%"], avoidLabelOverlap: true, itemStyle: { borderColor: colorDe("color-fondo", "#161616"), borderWidth: 2 },
+        label: { show: false, color: txt.color }, labelLine: { show: false, lineStyle: { color: bordeFuerte } },
         data: v.nombres.map(function (c) { return { name: c, value: v.cultivos[c].ha, itemStyle: { color: colores[c] } }; }) }]
     });
 
     var cats = ["Spot proyectado\n(0 % cubierto)", "Tu elección\n(" + etiquetaEleccion(v) + ")", "Futuro\n(100 % cubierto)"];
     var vals = [v.resultados[0].mbHa, v.usuario.mbHa, v.resultados[1].mbHa];
-    var colsBarra = [colorDe("color-sin", "#b7791f"), colorDe("color-acento", "#2f6b3a"), colorDe("color-con", "#1f7a7a")];
+    var colsBarra = [colorDe("color-sin", "#b28600"), colorDe("color-acento", "#4589ff"), colorDe("color-con", "#009d9a")];
     dibujar("comparacion", nodos.graficoComparacion, {
       animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: 24, bottom: 48 },
-      tooltip: { trigger: "item", formatter: function (p) { return p.name.replace("\n", " ") + ": " + fm.usd(p.value) + " USD/ha"; } },
-      xAxis: { type: "category", data: cats, axisLabel: { color: txt.color, interval: 0 }, axisLine: { lineStyle: { color: borde } } },
+      tooltip: tooltipDelTema({ trigger: "item", formatter: function (p) { return p.name.replace("\n", " ") + ": " + fm.usd(p.value) + " USD/ha"; } }),
+      xAxis: { type: "category", data: cats, axisLabel: { color: txt.color, interval: 0 }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { lineStyle: { color: bordeFuerte } } },
       yAxis: { type: "value", axisLabel: { color: suave, formatter: function (x) { return fm.usd(x); } }, splitLine: { lineStyle: { color: borde } } },
       series: [{ type: "bar", barMaxWidth: 64, data: vals.map(function (x, i) { return { value: x, itemStyle: { color: colsBarra[i] } }; }),
         label: { show: true, position: "top", color: txt.color, formatter: function (p) { return fm.usd(p.value); } } }]
     });
 
-    var series = [{ h: 0, nombre: "0 % cubierto", color: colorDe("color-sin", "#b7791f") }, { h: 1, nombre: "100 % cubierto", color: colorDe("color-con", "#1f7a7a") }];
+    var series = [{ h: 0, nombre: "0 % cubierto", color: colorDe("color-sin", "#b28600") }, { h: 1, nombre: "100 % cubierto", color: colorDe("color-con", "#009d9a") }];
     var uniformeG = hUniforme(v.hPorCultivo);
     if (uniformeG === null || (uniformeG > 0 && uniformeG < 1)) {
-      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu elección (por cultivo)" : Math.round(uniformeG * 100) + " % cubierto", color: colorDe("color-acento", "#2f6b3a"), discontinua: true });
+      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu elección (por cultivo)" : Math.round(uniformeG * 100) + " % cubierto", color: colorDe("color-acento", "#4589ff"), discontinua: true });
     }
     dibujar("escenarios", nodos.graficoEscenarios, {
       animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: 40, bottom: 32 },
-      legend: { top: 0, textStyle: { color: txt.color } },
-      tooltip: { trigger: "axis", valueFormatter: function (x) { return fm.porcentaje(x); } },
-      xAxis: { type: "category", data: v.campanas, boundaryGap: false, axisLabel: { color: txt.color }, axisLine: { lineStyle: { color: borde } } },
+      legend: { top: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily }, inactiveColor: bordeFuerte },
+      tooltip: tooltipDelTema({ trigger: "axis", axisPointer: { lineStyle: { color: bordeFuerte } }, valueFormatter: function (x) { return fm.porcentaje(x); } }),
+      xAxis: { type: "category", data: v.campanas, boundaryGap: false, axisLabel: { color: txt.color }, axisLine: { lineStyle: { color: bordeFuerte } } },
       yAxis: { type: "value", scale: true, axisLabel: { color: suave, formatter: function (x) { return fm.porcentaje(x); } }, splitLine: { lineStyle: { color: borde } } },
       series: series.map(function (s) {
         return { name: s.nombre, type: "line", symbolSize: 7, itemStyle: { color: s.color }, lineStyle: { color: s.color, width: 3, type: s.discontinua ? "dashed" : "solid" }, data: (s.escenario || v.escenarios[s.h]).r };
@@ -1475,7 +1500,7 @@
       el("div", { "class": "sc-mas-caja" }, [nodos.botonMas, nodos.mas]),
       el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto no es asesoramiento financiero. "),
         "El precio de cosecha proyectado es un supuesto del grupo (el crecimiento anual compuesto del precio disponible a cosecha entre 2020/21 y 2025/26), no un pronóstico. " +
-        "Los seis escenarios son sorpresas de precio de campañas pasadas aplicadas al precio futuro 2026/27 de referencia, con el rinde fijo: describen lo que pasó, no lo que va a pasar."])
+        "Los seis escenarios aplican las sorpresas de precio de las campañas pasadas al precio de cosecha proyectado (lo que no cubrís) y la base histórica al futuro 2026/27 (lo que cubrís), con rinde fijo: describen lo que pasó, no lo que va a pasar."])
     ]);
     nodos.resultados = el("div", { "class": "mc-resultados sc-resultados", id: "sc-resultados", "aria-live": "polite" }, [nodos.avisoLink, nodos.vacio, nodos.ok]);
     nodos.resultados.hidden = true;

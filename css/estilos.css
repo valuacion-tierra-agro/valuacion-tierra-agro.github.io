@@ -3,112 +3,73 @@
    Los colores de las series (proyectado, sin cobertura, con cobertura) se definen una sola vez
    acá, en :root, y se usan igual en la tabla y en los gráficos. */
 
+/* Tema único: oscuro («Gray 100» de IBM Carbon). En pantalla la página es siempre oscura, sin mirar el modo del
+   sistema; en papel (@media print, más abajo) los mismos nombres se redefinen para hoja blanca. */
 :root {
-  color-scheme: light dark;
-  /* Tierra, trigo, soja y maíz: la paleta sale del campo pampeano, no de una plantilla */
-  --color-fondo: #f6f1e6;
-  --color-superficie: #fffdf8;
-  --color-texto: #231f17;
-  --color-texto-suave: #5c5444;
-  --color-borde: #d8ccb2;
-  --color-acento: #7a3e1d;
-  --color-alerta: #b3261e;
-  --color-fondo-alerta: #f8dfd9;
-  --color-aviso: #946200;
-  --color-proyectado: #7d7766;
-  --color-sin: #b7791f;
-  --color-con: #1f7a7a;
-  --color-trigo: #856412;
-  --color-soja: #3f6b27;
-  --color-maiz: #9c540c;
-  --color-k-base: #5b3c8c;
-  --color-k-beta: #a23b72;
-  --color-supuesto: #1a5aa6;
-  /* Ocho colores para las zonas del gráfico del valor de la tierra: reutilizan los del tema, así cambian solos en modo oscuro */
+  color-scheme: dark;
+  --color-fondo: #161616;            /* página */
+  --color-superficie: #262626;       /* tarjetas, campos y cajas */
+  --color-superficie-2: #393939;     /* hover, capa sobre una superficie, seleccionado neutro */
+  --color-texto: #f4f4f4;
+  --color-texto-suave: #c6c6c6;
+  --color-borde: #393939;            /* líneas finas */
+  --color-borde-fuerte: #6f6f6f;     /* línea inferior de los campos y bordes de botones secundarios */
+  --color-acento: #4589ff;           /* único acento: enlaces, borde de lo elegido y subrayado de la pestaña activa */
+  --color-acento-claro: #78a9ff;     /* texto de acento sobre --color-superficie-2 y enlace al pasar el mouse */
+  --color-acento-fuerte: #0f62fe;    /* fondo del botón principal y de la opción elegida */
+  --color-acento-fuerte-hover: #0353e9;
+  --color-sobre-acento: #ffffff;     /* texto sobre --color-acento-fuerte */
+  --color-foco: #ffffff;             /* anillo de foco */
+  --color-alerta: #ff8389;
+  --color-fondo-alerta: #750e13;
+  --color-aviso: #f1c21b;
+  --color-proyectado: #a8a8a8;
+  --color-sin: #b28600;
+  --color-con: #009d9a;
+  --color-trigo: #f1c21b;
+  --color-soja: #08bdba;
+  --color-maiz: #eb6200;
+  --color-k-base: #a56eff;
+  --color-k-beta: #ee5396;
+  --color-supuesto: #33b1ff;
+  /* Ocho colores para las zonas del gráfico del valor de la tierra: reutilizan los del tema, así cambian solos en papel */
   --color-zona-1: var(--color-acento);
   --color-zona-2: var(--color-con);
   --color-zona-3: var(--color-k-base);
-  --color-zona-4: var(--color-soja);
+  --color-zona-4: var(--color-maiz);
   --color-zona-5: var(--color-k-beta);
   --color-zona-6: var(--color-supuesto);
-  --color-zona-7: var(--color-sin);
+  --color-zona-7: var(--color-trigo);
   --color-zona-8: var(--color-proyectado);
-  --radio: 6px;
-  --fuente-texto: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fuente-titulos: Fraunces, Georgia, "Times New Roman", serif;
+  --radio: 0;
+  --fuente-texto: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --fuente-titulos: var(--fuente-texto);
   --fuente: var(--fuente-texto);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-fondo: #17140f;
-    --color-superficie: #211d16;
-    --color-texto: #efe8d8;
-    --color-texto-suave: #b5ab96;
-    --color-borde: #43392a;
-    --color-acento: #e0a35c;
-    --color-alerta: #ff8a80;
-    --color-fondo-alerta: #40201e;
-    --color-aviso: #d9a441;
-    --color-proyectado: #b0a894;
-    --color-sin: #e0b04f;
-    --color-con: #4fb8b8;
-    --color-trigo: #e0c070;
-    --color-soja: #8fc16a;
-    --color-maiz: #f0a050;
-    --color-k-base: #b9a3e3;
-    --color-k-beta: #f08cc0;
-    --color-supuesto: #8ab8f0;
-  }
+/* Tipografía propia, copiada en vendor/fuentes (Fontsource, licencia OFL): no se baja nada de internet */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../vendor/fuentes/ibm-plex-sans-latin-300-normal.woff2") format("woff2");
 }
 
-/* Tipografías propias, copiadas en vendor/fuentes (Fontsource, licencia OFL): no se baja nada de internet */
 @font-face {
-  font-family: Fraunces;
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("../vendor/fuentes/fraunces-latin-400-normal.woff2") format("woff2");
+  src: url("../vendor/fuentes/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: Fraunces;
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("../vendor/fuentes/fraunces-latin-600-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: Fraunces;
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("../vendor/fuentes/fraunces-latin-700-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Instrument Sans";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../vendor/fuentes/instrument-sans-latin-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Instrument Sans";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("../vendor/fuentes/instrument-sans-latin-500-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Instrument Sans";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("../vendor/fuentes/instrument-sans-latin-600-normal.woff2") format("woff2");
+  src: url("../vendor/fuentes/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
 }
 
 *,
@@ -128,6 +89,7 @@ body {
   padding: 0 1rem 2rem;
   font-family: var(--fuente);
   line-height: 1.5;
+  letter-spacing: 0.16px;
   font-variant-numeric: tabular-nums;
   background-color: var(--color-fondo);
   color: var(--color-texto);
@@ -137,20 +99,22 @@ h1,
 h2,
 h3 {
   font-family: var(--fuente-titulos);
-  font-weight: 600;
+  font-weight: 400;
 }
 
+/* Carbon: títulos grandes en peso 300; de 28 px para abajo, 400 */
 h1 {
-  margin: 1.25rem 0 0.25rem;
-  font-size: clamp(1.5rem, 5vw, 2.1rem);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  margin: 1.5rem 0 0.5rem;
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
 h2 {
-  margin: 1.25rem 0 0.5rem;
+  margin: 2rem 0 1rem;
   font-size: 1.5rem;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .subtitulo,
@@ -165,21 +129,20 @@ h2 {
 
 .ayuda {
   margin: 0.25rem 0 0.75rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .pie {
-  margin-top: 2rem;
-  padding-top: 0.75rem;
+  margin-top: 3rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--color-borde);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
-/* Encabezado: una franja de tres colores (trigo, soja y maíz) como los surcos de un lote */
+/* Encabezado: sólo un renglón fino debajo, sin franjas de colores */
 .encabezado {
-  padding-top: 0.75rem;
-  border-top: 6px solid var(--color-acento);
-  border-image: linear-gradient(90deg, var(--color-trigo) 0 33.3%, var(--color-soja) 0 66.6%, var(--color-maiz) 0) 1;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--color-borde);
 }
 
 /* Navegación por secciones: barra superior pegada arriba; en celular se desplaza de costado */
@@ -189,7 +152,7 @@ h2 {
   z-index: 5;
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.25rem 0.25rem;
+  gap: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -202,18 +165,19 @@ h2 {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  padding: 0 0.5rem;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1rem;
   color: var(--color-texto-suave);
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
   white-space: nowrap;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
 }
 
 .pestana:hover {
-  color: var(--color-acento);
+  background-color: var(--color-superficie-2);
+  color: var(--color-texto);
 }
 
 .pestana[aria-current="page"] {
@@ -230,36 +194,36 @@ h2 {
 #subnavegacion {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.75rem 0 0;
+  gap: 0;
+  margin: 1rem 0 0;
+  border-bottom: 1px solid var(--color-borde);
 }
 
+/* Igual que las pestañas de arriba: sin caja, con una línea de 2 px de acento en la elegida */
 .subpestana {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 0.9rem;
-  color: var(--color-texto);
+  padding: 0 1rem;
+  color: var(--color-texto-suave);
   text-decoration: none;
-  border: 1px solid var(--color-borde);
-  border-radius: 999px;
-  background-color: var(--color-superficie);
+  border-bottom: 2px solid transparent;
 }
 
 .subpestana:hover {
-  border-color: var(--color-acento);
+  background-color: var(--color-superficie-2);
+  color: var(--color-texto);
 }
 
 .subpestana[aria-current="page"] {
-  background-color: var(--color-acento);
-  border-color: var(--color-acento);
-  color: var(--color-fondo);
+  border-bottom-color: var(--color-acento);
+  color: var(--color-texto);
   font-weight: 600;
 }
 
 /* Secciones 2, 3 y 4 (precios, valor de la tierra y costo de oportunidad) */
 .sec-cuadro > * + * {
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
 }
 
 .sec-selector {
@@ -271,7 +235,7 @@ h2 {
 }
 
 .sec-selector > label {
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .sec-selector > select {
@@ -284,14 +248,21 @@ h2 {
   margin-top: 0.5rem;
 }
 
-.sec-accion {
-  border-style: dashed;
+/* «Todas» / «Ninguna»: acciones sueltas, sin relleno y con texto de acento (no son opciones elegibles) */
+.sc-chip.sec-accion {
+  background-color: transparent;
+  color: var(--color-acento);
+}
+
+.sc-chip.sec-accion:hover {
+  background-color: var(--color-superficie-2);
+  color: var(--color-acento-claro);
 }
 
 .sec-nota {
   margin: 0 0 1rem;
   max-width: 52rem;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   color: var(--color-texto-suave);
 }
 
@@ -321,13 +292,9 @@ h2 {
   margin: 0 0 1.25rem;
 }
 
-.sec-explicacion {
-  border-top: 4px solid var(--color-acento);
-}
-
 .sec-explicacion h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
 }
 
 .sec-explicacion p {
@@ -336,11 +303,11 @@ h2 {
 }
 
 .sec-central {
-  padding: 0.5rem 0.75rem;
-  border-left: 6px solid var(--color-acento);
+  padding: 0.5rem 1rem;
+  border-left: 4px solid var(--color-acento);
   font-family: var(--fuente-titulos);
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 400;
 }
 
 @media (min-width: 1000px) {
@@ -353,12 +320,22 @@ a {
   color: var(--color-acento);
 }
 
-/* Tarjetas */
+a:hover {
+  color: var(--color-acento-claro);
+}
+
+/* Tarjetas: superficie más clara que la página, sin sombra */
 .tarjeta {
   padding: 1rem;
   background-color: var(--color-superficie);
-  border: 1px solid var(--color-borde);
+  border: 0;
   border-radius: var(--radio);
+}
+
+@media (min-width: 760px) {
+  .tarjeta {
+    padding: 1.5rem;
+  }
 }
 
 /* Mi campo: una columna en celular; entradas a la izquierda y resultados a la derecha desde 760 px */
@@ -369,7 +346,7 @@ a {
 .mc-disposicion {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
@@ -391,7 +368,7 @@ a {
 }
 
 .mc-resultados > * + * {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 /* Resumen: seis tarjetas con los promedios de las campañas. Dos columnas (3 filas) en celular y
@@ -422,6 +399,7 @@ a {
   margin: 0 0 0.5rem;
   font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: 0.16px;
 }
 
 .mc-renglon {
@@ -438,6 +416,7 @@ a {
 /* El tamaño baja en pantallas angostas para que un número largo entre entero en la tarjeta */
 .mc-valor {
   font-size: clamp(1.15rem, 4.2vw, 1.5rem);
+  font-weight: 300;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
@@ -523,8 +502,10 @@ a {
 
 label {
   display: block;
-  margin-top: 0.75rem;
-  font-weight: 600;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-texto-suave);
 }
 
 .mc-entradas fieldset label {
@@ -532,26 +513,50 @@ label {
   font-weight: 400;
 }
 
+/* Campos al estilo Carbon: fondo de superficie, sin borde salvo una línea inferior; el botón se pinta aparte (abajo) */
 input,
 select,
 button {
   min-height: 44px;
   font: inherit;
+  letter-spacing: inherit;
   color: var(--color-texto);
   background-color: var(--color-superficie);
-  border: 1px solid var(--color-borde);
+  border: 0;
+  border-bottom: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio);
+}
+
+/* Campos dentro de una tarjeta (ya de superficie): una capa más clara, para que se vean */
+.tarjeta input,
+.tarjeta select {
+  background-color: var(--color-superficie-2);
+}
+
+/* Botón neutro (secundario): capa más clara que la superficie y borde inferior invisible */
+button {
+  background-color: var(--color-superficie-2);
+  border-bottom-color: transparent;
+  padding: 0 1rem;
+}
+
+/* Al pasar el mouse: una capa más clara (sólo los botones neutros; los enlaces-botón y los chips tienen la suya) */
+button:not([class]):hover,
+.df-csv:hover,
+.origen-cerrar:hover,
+.esc-entradas > button:hover {
+  background-color: var(--color-borde-fuerte);
 }
 
 input[type="text"],
 select {
   width: 100%;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 1rem;
 }
 
-/* Campo con un valor que no sirve: borde de alerta y el aviso justo debajo */
+/* Campo con un valor que no sirve: borde inferior de alerta y el aviso justo debajo */
 input[aria-invalid="true"] {
-  border-color: var(--color-alerta);
+  border-bottom: 2px solid var(--color-alerta);
 }
 
 .mc-error {
@@ -606,9 +611,10 @@ output {
   font-variant-numeric: tabular-nums;
 }
 
+/* Foco de Carbon: anillo de 2 px blanco, pegado al elemento */
 :focus-visible {
-  outline: 3px solid var(--color-acento);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-foco);
+  outline-offset: -2px;
 }
 
 /* Tabla de resultados: se desplaza dentro de su propio contenedor, nunca la página entera.
@@ -624,12 +630,12 @@ output {
 .mc-tabla {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
 .mc-tabla caption {
-  padding: 0 0 0.5rem;
+  padding: 0 0 0.75rem;
   text-align: left;
   font-weight: 600;
 }
@@ -637,13 +643,15 @@ output {
 .mc-tabla > thead > tr > th,
 .mc-tabla > tbody > tr > th,
 .mc-tabla > tbody > tr > td {
-  padding: 0.5rem;
+  padding: 0.75rem 0.5rem;
   border-bottom: 1px solid var(--color-borde);
 }
 
+/* Encabezado de la tabla sobre la superficie (la página queda un escalón más oscura) */
 .mc-tabla > thead > tr > th {
   text-align: right;
   vertical-align: bottom;
+  background-color: var(--color-superficie);
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.25;
@@ -661,6 +669,11 @@ output {
   box-shadow: 1px 0 0 var(--color-borde);
 }
 
+/* La esquina del encabezado es parte de la fila de encabezado: va sobre la superficie, como el resto de la fila */
+.mc-tabla > thead > tr > th:first-child {
+  background-color: var(--color-superficie);
+}
+
 .mc-tabla > tbody > tr > th {
   vertical-align: top;
   font-weight: 600;
@@ -675,8 +688,7 @@ output {
   display: block;
 }
 
-/* Contexto de la campaña: fase ENSO y desvío del rinde, en renglones chicos bajo el nombre */
-.mc-enso,
+/* Contexto de la campaña: desvío del rinde, en un renglón chico bajo el nombre */
 .mc-desvio {
   font-size: 0.8rem;
   font-weight: 400;
@@ -699,9 +711,14 @@ output {
   cursor: pointer;
 }
 
+.mc-ver-detalle:hover,
+.df-ver-origenes:hover {
+  color: var(--color-acento-claro);
+}
+
 /* Detalle por cultivo de una campaña: fila oculta que se abre debajo de la campaña */
 .mc-tabla > tbody > tr.mc-detalle > td {
-  padding: 0.75rem;
+  padding: 1rem 0.75rem;
   background-color: var(--color-superficie);
   border-bottom: 1px solid var(--color-borde);
   text-align: left;
@@ -719,7 +736,7 @@ output {
   width: 100%;
   border-collapse: collapse;
   white-space: normal;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -785,7 +802,6 @@ output {
   height: 0.75em;
   margin-right: 0.4em;
   background-color: var(--color-serie);
-  border-radius: 2px;
 }
 
 .barra {
@@ -794,8 +810,8 @@ output {
 
 /* Glosario al pie de la sección */
 .mc-glosario {
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--color-borde);
 }
 
@@ -809,7 +825,7 @@ output {
 }
 
 .mc-glosario dt {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-weight: 700;
 }
 
@@ -822,7 +838,7 @@ output {
 .mensaje,
 .mc-mensaje {
   margin: 0;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   background-color: var(--color-superficie);
   border: 1px solid var(--color-acento);
   border-radius: var(--radio);
@@ -831,11 +847,11 @@ output {
 /* Aviso de datos y control en vivo: arriba de todas las secciones, siempre a la vista */
 .aviso-datos {
   margin: 0 0 0.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   background-color: var(--color-superficie);
   border-left: 4px solid var(--color-aviso);
   border-radius: var(--radio);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .control-vivo {
@@ -857,7 +873,7 @@ output {
 
 .df-control,
 .df-casos {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .df-control h3,
@@ -955,8 +971,8 @@ output {
   max-width: min(24rem, calc(100vw - 16px));
   max-height: min(32rem, 80vh);
   overflow: auto;
-  padding: 0.75rem;
-  font-size: 0.9rem;
+  padding: 1rem;
+  font-size: 0.875rem;
   background-color: var(--color-superficie);
   border: 2px solid var(--color-acento);
   border-radius: var(--radio);
@@ -1032,7 +1048,7 @@ output {
 
 /* Datos y fuentes: fórmulas en lenguaje simple, límites del modelo y archivos de origen */
 .df-bloque {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 .df-bloque h3 {
@@ -1102,7 +1118,7 @@ output {
 }
 
 .rh-bloque {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 .rh-bloque h3 {
@@ -1206,6 +1222,12 @@ output {
 
 .rh-tabla-zonas > tbody > tr.rh-subio > th {
   background-color: var(--color-fondo-alerta);
+}
+
+/* Sobre el fondo de alerta el azul de acento pierde contraste: el botón de la fila usa el acento claro */
+.rh-subio .df-ver-origenes,
+.rh-subio a {
+  color: var(--color-acento-claro);
 }
 
 .rh-estado,
@@ -1380,7 +1402,7 @@ output {
    usa otra definición de rinde (planteo fijo de Márgenes) y no se compara uno a uno con tus cifras. */
 .rk-referencia {
   margin-top: 2rem;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   background-color: var(--color-superficie);
   border: 2px dashed var(--color-borde);
   border-radius: var(--radio);
@@ -1421,7 +1443,7 @@ output {
 }
 
 .esc-entradas > button {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   padding: 0 1rem;
   cursor: pointer;
 }
@@ -1478,7 +1500,7 @@ output {
 /* El cartel de arriba de los resultados: igual que un aviso, y con el color del supuesto cuando hay cambios */
 .esc-marca {
   margin: 0;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   background-color: var(--color-superficie);
   border: 1px solid var(--color-acento);
   border-radius: var(--radio);
@@ -1542,8 +1564,8 @@ output {
    La celda más cercana al escenario lleva un contorno y además se explica en palabras debajo de la tabla.
    La tabla se desplaza dentro de su .tabla-contenedor y la primera columna (el rinde) queda fija. */
 .esc-sensibilidad {
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--color-borde);
 }
 
@@ -1595,19 +1617,20 @@ output {
    Simulá tu campaña (sección 1)
    ---------------------------------------------------------------------------------------- */
 .sc-entradas > h3 {
-  margin: 0 0 0.75rem;
-  font-size: 1.15rem;
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
 }
 
 .sc-campo {
-  margin: 0 0 0.9rem;
+  margin: 0 0 1rem;
 }
 
 .sc-campo > label {
   display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
-  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-texto-suave);
 }
 
 .sc-campo-fila {
@@ -1636,40 +1659,44 @@ output {
 }
 
 .sc-titulo-grupo {
-  margin: 0 0 0.35rem;
-  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .sc-grupo {
-  margin: 0 0 1rem;
+  margin: 0 0 1.5rem;
 }
 
 .sc-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
+/* Opción de un grupo (cultivo, rinde, sí/no, % cubierto): cuadrada; la elegida va en azul de acción */
 .sc-chip {
-  padding: 0 0.9rem;
+  padding: 0 1rem;
   font: inherit;
   color: var(--color-texto);
-  background-color: var(--color-superficie);
-  border: 1px solid var(--color-borde);
-  border-radius: 999px;
+  background-color: var(--color-superficie-2);
+  border: 0;
+  border-radius: var(--radio);
   cursor: pointer;
 }
 
 .sc-chip:hover {
-  border-color: var(--color-acento);
+  background-color: var(--color-borde-fuerte);
 }
 
 .sc-chip[aria-pressed="true"] {
-  background-color: var(--color-acento);
-  border-color: var(--color-acento);
-  color: var(--color-fondo);
+  background-color: var(--color-acento-fuerte);
+  color: var(--color-sobre-acento);
   font-weight: 600;
+}
+
+.sc-chip[aria-pressed="true"]:hover {
+  background-color: var(--color-acento-fuerte-hover);
 }
 
 /* Cobertura por cultivo: una fila de botones por cultivo en los resultados y un desplegable por cultivo en el paso 4. */
@@ -1684,6 +1711,32 @@ output {
   flex: 0 0 5rem;
   align-self: center;
   font-weight: 600;
+}
+
+/* Botones de cobertura (0, 25, 50, 75 y 100 %): los cinco se reparten el ancho y nunca bajan de renglón.
+   En pantallas angostas el nombre del cultivo pasa arriba, para que los botones tengan todo el ancho. */
+.sc-chips.sc-simulador {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.sc-simulador > .sc-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 0.25rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .sc-chips.sc-simulador {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .sc-simulador > .sc-simulador-cultivo {
+    flex: 0 0 100%;
+  }
 }
 
 .sc-bloque-h {
@@ -1710,8 +1763,8 @@ output {
 
 .sc-cultivo {
   min-width: 0;
-  margin: 0 0 1rem;
-  padding: 0.5rem 0 0 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem 0 0 1rem;
   border: 0;
   border-left: 4px solid var(--color-borde);
 }
@@ -1748,17 +1801,17 @@ output {
 }
 
 .sc-resultados > * + * {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
 }
 
 .sc-ok > * + * {
-  margin-top: 1.25rem;
+  margin-top: 2rem;
 }
 
 .sc-resumen-zona {
   margin: 0;
   color: var(--color-texto-suave);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 /* Tarjetas: la del margen bruto es la principal y ocupa todo el ancho; las otras van al lado, sin ser todas iguales */
@@ -1769,18 +1822,19 @@ output {
 }
 
 .sc-principal {
-  border-left: 6px solid var(--color-acento);
+  border-left: 4px solid var(--color-acento);
 }
 
 .sc-grande {
   font-family: var(--fuente-titulos);
   font-size: clamp(1.6rem, 7vw, 2.4rem);
+  font-weight: 300;
 }
 
 .sc-bloque {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .sc-figura {
@@ -1833,14 +1887,14 @@ output {
 
 .sc-fila-elegida > th,
 .sc-fila-elegida > td {
-  background-color: var(--color-superficie);
+  background-color: var(--color-superficie-2);
   font-weight: 700;
 }
 
 .sc-notas-precios {
   margin: 0.75rem 0 0;
   padding-left: 1.25rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--color-texto-suave);
 }
 
@@ -1858,7 +1912,7 @@ output {
 
 .sc-lectura h3 {
   margin: 0 0 0.5rem;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
 }
 
 .sc-lectura p {
@@ -1867,11 +1921,11 @@ output {
 
 .sc-aviso {
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   border-left: 4px solid var(--color-aviso);
   background-color: var(--color-superficie);
   border-radius: var(--radio);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 @media (min-width: 760px) {
@@ -1919,13 +1973,13 @@ output {
 
 .sc-encabezado-informe {
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   border-left: 4px solid var(--color-acento);
   background-color: var(--color-superficie);
   border-radius: var(--radio);
   font-family: var(--fuente-titulos);
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 400;
   overflow-wrap: anywhere;
 }
 
@@ -1935,26 +1989,28 @@ output {
   gap: 0.5rem;
 }
 
+/* Botón neutro (secundario): capa clara, y un contorno de 1 px al pasar el mouse */
 .sc-boton {
   min-height: 44px;
   padding: 0 1rem;
   font: inherit;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-texto);
-  background-color: var(--color-superficie);
-  border: 1px solid var(--color-acento);
+  background-color: var(--color-superficie-2);
+  border: 0;
   border-radius: var(--radio);
   cursor: pointer;
 }
 
 .sc-boton:hover {
-  background-color: var(--color-acento);
-  color: var(--color-fondo);
+  background-color: var(--color-superficie-2);
+  outline: 1px solid var(--color-borde-fuerte);
+  outline-offset: -1px;
 }
 
 .sc-estado-link {
   margin: 0.5rem 0 0;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .sc-link-caja {
@@ -1970,7 +2026,8 @@ output {
   font-size: 0.85rem;
   color: var(--color-texto);
   background-color: var(--color-superficie);
-  border: 1px solid var(--color-borde);
+  border: 0;
+  border-bottom: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio);
 }
 
@@ -1987,7 +2044,7 @@ output {
 /* Fase 4: asistente de carga y resultados simples (una idea por pantalla, mucho aire, pocas cifras grandes) */
 .sc-asistente {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
   max-width: 46rem;
   margin: 0 auto;
 }
@@ -2013,7 +2070,7 @@ output {
 
 .sc-paso {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .sc-paso[hidden] {
@@ -2024,6 +2081,7 @@ output {
   margin: 0;
   font-family: var(--fuente-titulos);
   font-size: 1.5rem;
+  font-weight: 400;
 }
 
 .sc-ayuda-paso {
@@ -2044,30 +2102,31 @@ output {
   }
 }
 
+/* Mosaico de zona: superficie con un borde de 2 px que sólo se pinta de acento en la elegida (así no se mueve nada) */
 .sc-zona-tarjeta {
   display: grid;
   gap: 0.25rem;
-  padding: 0.9rem 1rem;
+  padding: 1rem;
   font: inherit;
   text-align: left;
   color: var(--color-texto);
-  background-color: var(--color-superficie);
-  border: 1px solid var(--color-borde);
+  background-color: var(--color-superficie-2);
+  border: 2px solid transparent;
   border-radius: var(--radio);
   cursor: pointer;
 }
 
 .sc-zona-tarjeta:hover {
-  border-color: var(--color-acento);
+  background-color: var(--color-borde-fuerte);
 }
 
 .sc-zona-tarjeta[aria-pressed="true"] {
   border: 2px solid var(--color-acento);
-  background-color: var(--color-fondo);
+  background-color: var(--color-superficie-2);
 }
 
 .sc-zona-nombre {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .sc-zona-detalle {
@@ -2078,13 +2137,6 @@ output {
 
 .sc-calendario-carga {
   margin-top: 0.75rem;
-}
-
-.sc-calendario-fila {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
 }
 
 .sc-nav-pasos {
@@ -2102,11 +2154,16 @@ output {
   margin-left: auto;
 }
 
+/* Botón principal: el azul de acción, con texto blanco, sin borde */
 .sc-boton-principal {
-  background-color: var(--color-acento);
-  border-color: var(--color-acento);
-  color: var(--color-fondo);
-  font-weight: 600;
+  background-color: var(--color-acento-fuerte);
+  color: var(--color-sobre-acento);
+  font-weight: 400;
+}
+
+.sc-boton-principal:hover {
+  background-color: var(--color-acento-fuerte-hover);
+  outline: 0;
 }
 
 .sc-enlace-fuentes {
@@ -2117,14 +2174,15 @@ output {
 
 .sc-seccion-res {
   display: grid;
-  gap: 1rem;
-  margin-bottom: 2.5rem;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
 }
 
 .sc-seccion-res > h3 {
   margin: 0;
   font-family: var(--fuente-titulos);
   font-size: 1.5rem;
+  font-weight: 400;
 }
 
 .sc-claves {
@@ -2161,7 +2219,8 @@ output {
 
 .sc-clave h4 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 400;
   color: var(--color-texto-suave);
 }
 
@@ -2169,12 +2228,13 @@ output {
   margin: 0;
   font-family: var(--fuente-titulos);
   font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-weight: 300;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
 .sc-principal .sc-numero {
-  color: var(--color-acento);
+  color: var(--color-texto);
 }
 
 .sc-frase {
@@ -2221,20 +2281,31 @@ output {
 
 .df-acordeon {
   margin: 0.75rem 0;
-  border: 1px solid var(--color-borde);
+  border: 0;
   border-radius: var(--radio);
   background-color: var(--color-superficie);
 }
 
 .df-acordeon > summary {
-  padding: 0.9rem 1rem;
+  padding: 1rem;
   font-family: var(--fuente-titulos);
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 400;
   cursor: pointer;
+}
+
+.df-acordeon > summary:hover {
+  background-color: var(--color-superficie-2);
 }
 
 .df-acordeon-cuerpo {
   padding: 0 1rem 1rem;
+}
+
+/* Dentro de un desplegable (que es de superficie) la primera columna fija lleva ese mismo fondo, no el de la página */
+.df-acordeon .mc-tabla > tbody > tr > th,
+.df-acordeon .mc-tabla > tfoot > tr > th {
+  background-color: var(--color-superficie);
 }
 
 .pie-enlace {
@@ -2247,24 +2318,34 @@ output {
     margin: 12mm;
   }
 
-  /* Vuelve a definir los colores del tema: aunque la pantalla esté en modo oscuro, el papel es blanco */
+  /* Vuelve a definir los colores del tema: aunque la pantalla sea oscura, el papel es blanco */
   :root {
     color-scheme: light;
-    --color-fondo: white;
-    --color-superficie: white;
-    --color-texto: hsl(0 0% 7%);
-    --color-texto-suave: hsl(0 0% 27%);
-    --color-borde: hsl(0 0% 73%);
-    --color-acento: hsl(21 62% 30%);
-    --color-alerta: hsl(3 71% 41%);
-    --color-fondo-alerta: white;
-    --color-aviso: hsl(40 100% 29%);
-    --color-proyectado: hsl(44 14% 32%);
-    --color-sin: hsl(36 71% 42%);
-    --color-con: hsl(180 59% 30%);
-    --color-trigo: hsl(43 76% 30%);
-    --color-soja: hsl(99 47% 29%);
-    --color-maiz: hsl(30 86% 33%);
+    --color-fondo: #ffffff;
+    --color-superficie: #ffffff;
+    --color-superficie-2: #f4f4f4;
+    --color-texto: #161616;
+    --color-texto-suave: #525252;
+    --color-borde: #c6c6c6;
+    --color-borde-fuerte: #8d8d8d;
+    --color-acento: #0f62fe;
+    --color-acento-claro: #0f62fe;
+    --color-acento-fuerte: #0f62fe;
+    --color-acento-fuerte-hover: #0353e9;
+    --color-sobre-acento: #ffffff;
+    --color-foco: #0f62fe;
+    --color-alerta: #da1e28;
+    --color-fondo-alerta: #ffffff;
+    --color-aviso: #8e6a00;
+    --color-proyectado: #6f6f6f;
+    --color-sin: #8e6a00;
+    --color-con: #005d5d;
+    --color-trigo: #8e6a00;
+    --color-soja: #007d79;
+    --color-maiz: #ba4e00;
+    --color-k-base: #8a3ffc;
+    --color-k-beta: #d02670;
+    --color-supuesto: #0072c3;
   }
 
   html,

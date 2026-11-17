@@ -75,7 +75,7 @@
         { nombre: "Fs · futuro al sembrar", clave: "fs", valores: relleno(vista.filas.map(function (f) { return f.fs; })) },
         { nombre: "Sc · disponible a cosecha", clave: "sc", valores: relleno(vista.filas.map(function (f) { return f.sc; })) },
         { nombre: "Fc · futuro a cosecha", clave: "fc", valores: relleno(vista.filas.map(function (f) { return f.fc; })) },
-        { nombre: "Referencia 2026/27 (no es una cotización)", clave: "ref", valores: vacios.concat([vista.referencia.valor]) }
+        { nombre: vista.referencia.esReferencia ? "Referencia 2026/27 (no es una cotización)" : "Futuro 2026/27 (al sembrar)", clave: "ref", valores: vacios.concat([vista.referencia.valor]) }
       ]
     };
   }
@@ -131,7 +131,7 @@
     base().vaciar(cont);
     var r = v.referencia;
     var detalle = r.esReferencia ? " (" + r.contrato + " · " + C().ROTULO_REFERENCIA + ")" : " (" + r.contrato + " · " + r.fecha + " · " + r.fuente + ")";
-    cont.appendChild(el("p", { "class": "sec-nota" }, ["Futuro de referencia 2026/27 de " + v.cultivo + ": ", num(r.valor, "usd2", r.origen), " USD/t" + detalle + ". ",
+    cont.appendChild(el("p", { "class": "sec-nota" }, [(r.esReferencia ? "Futuro de referencia 2026/27 de " : "Futuro 2026/27 de ") + v.cultivo + ": ", num(r.valor, "usd2", r.origen), " USD/t" + detalle + ". ",
       r.esReferencia ? "Es el futuro de siembra de la última campaña, tomado como referencia: no es una cotización de hoy." : ""]));
   }
 
@@ -141,10 +141,10 @@
     var g = armarGrafico(v);
     var colorCultivo = t.cultivos[v.cultivo];
     var estilos = {
-      fs: { color: raiz.TESIS_EC.colorDe("color-proyectado", "#7d7766"), trazo: "dashed" },
+      fs: { color: raiz.TESIS_EC.colorDe("color-proyectado", "#a8a8a8"), trazo: "dashed" },
       sc: { color: colorCultivo, grosor: 4 },
-      fc: { color: raiz.TESIS_EC.colorDe("color-k-base", "#5b3c8c"), trazo: "dotted" },
-      ref: { color: raiz.TESIS_EC.colorDe("color-acento", "#7a3e1d"), simbolo: "diamond", simboloTam: 11 }
+      fc: { color: raiz.TESIS_EC.colorDe("color-k-base", "#a56eff"), trazo: "dotted" },
+      ref: { color: raiz.TESIS_EC.colorDe("color-acento", "#4589ff"), simbolo: "diamond", simboloTam: 11 }
     };
     var series = g.series.map(function (s) { return { nombre: s.nombre, valores: s.valores, color: estilos[s.clave].color, trazo: estilos[s.clave].trazo, grosor: estilos[s.clave].grosor, simbolo: estilos[s.clave].simbolo, simboloTam: estilos[s.clave].simboloTam }; });
     ec.dibujar("precios", nodos.grafico, raiz.TESIS_EC.opcionDeLineas(t, g.categorias, series, function (x) { return base().formato.usd(x); }, { escalar: true }));
@@ -200,7 +200,7 @@
     nodos.referencia = el("div", { "class": "sec-referencia" });
     nodos.cuadro = el("div", { "class": "sec-cuadro" }, [
       nodos.resumen,
-      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Fs, Sc y Fc por campaña", "precio en USD por tonelada", "campaña (la última es la referencia 2026/27)"), nodos.grafico]),
+      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Fs, Sc y Fc por campaña", "precio en USD por tonelada", "campaña (la última es el futuro 2026/27)"), nodos.grafico]),
       nodos.referencia, nodos.tabla, nodos.lectura,
       el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es una predicción ni un consejo de cobertura: son los precios de las campañas 2020/21 a 2025/26 de los Excels de la tesis."])
     ]);

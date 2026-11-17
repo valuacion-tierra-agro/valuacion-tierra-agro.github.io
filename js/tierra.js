@@ -143,7 +143,7 @@
     if (!raiz.echarts || !ec) return;
     var t = raiz.TESIS_EC.tema();
     var g = armarGrafico(v);
-    var colores = [1, 2, 3, 4, 5, 6, 7, 8].map(function (i) { return raiz.TESIS_EC.colorDe("color-zona-" + i, "#7a3e1d"); });
+    var colores = [1, 2, 3, 4, 5, 6, 7, 8].map(function (i) { return raiz.TESIS_EC.colorDe("color-zona-" + i, "#4589ff"); });
     var series = g.series.map(function (s, i) { return { nombre: s.nombre, valores: s.valores, color: colores[i % colores.length], trazo: i >= 4 ? "dashed" : "solid" }; });
     ec.dibujar("tierra", nodos.grafico, raiz.TESIS_EC.opcionDeLineas(t, g.categorias, series, function (x) { return base().formato.usd(x); }, { escalar: true }));
   }

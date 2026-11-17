@@ -172,7 +172,7 @@
   }
 
   // Todo lo que hace falta de un cultivo en una campaña: el caso, sus cuentas con la h elegida,
-  // el clima, el contrato y o(campo) = la celda de RR_Margenes de la que sale cada campo.
+  // el contrato y o(campo) = la celda de RR_Margenes de la que sale cada campo.
   function contextoDeCultivo(datos, m, cultivo, campana) {
     var motor = raiz.TESIS_MOTOR;
     var caso = motor.casosDe(datos, cultivo, m.zona).filter(function (c) { return c.campana === campana; })[0];
@@ -182,7 +182,6 @@
       caso: caso,
       ha: m.hectareasPorCultivo[cultivo],
       r: motor.calcularCaso(caso, { h: m.h, comision: m.comision }),
-      clima: filaDe(datos.porCampana, cultivo, campana, "clima"),
       precio: filaDe(datos.precios, cultivo, campana, "contrato"),
       o: function (campo) { return motor.origen(caso, campo, datos); },
       partes: function (campos) { return campos.map(function (campo) { return motor.origen(caso, campo, datos); }); }
@@ -208,7 +207,6 @@
     { clave: "desvioRinde", concepto: "Desvío del rinde", celda: function (c, d) {
       return celdaNumero(c.r.desvioRinde, "porcentaje", d.calculado(FORMULAS.desvioRindeCultivo, c.partes(["rindeEsperado", "rindeReal"]), [c.o("excel.desvioRinde")]));
     } },
-    { clave: "faseEnso", concepto: "Fase ENSO", celda: function (c) { return celdaTexto(c.clima.faseEnso.v, c.clima.faseEnso.o); } },
     { clave: "contrato", concepto: "Contrato (siembra → cosecha)", celda: function (c, d) {
       var p = c.precio;
       return celdaTexto(p.contrato.v + " (" + p.mesSiembra.v + " → " + p.mesCosecha.v + ")", d.unir([p.contrato.o, p.mesSiembra.o, p.mesCosecha.o]));
@@ -248,7 +246,7 @@
     } }
   ];
 
-  // Contexto (fase ENSO y desvío de rinde), resultado del futuro, rentabilidades y detalle de una campaña.
+  // Contexto (desvío de rinde), resultado del futuro, rentabilidades y detalle de una campaña.
   function completarCampana(datos, m, p, fila, contextos) {
     var app = raiz.TESIS_APP;
     var motor = raiz.TESIS_MOTOR;
@@ -256,14 +254,7 @@
     var hDelExcel = Math.abs(m.h - datos.parametros.h.v) < 1e-9;
     var delCultivo = function (campo) { return contextos.map(function (c) { return c.o(campo); }); };
 
-    // Fase ENSO: la misma para todos los cultivos o, si difiere, una por cultivo.
-    var fases = contextos.map(function (c) { return c.clima.faseEnso; });
-    var iguales = fases.every(function (f) { return f.v === fases[0].v; });
     fila.contexto = {
-      enso: {
-        texto: iguales ? fases[0].v : contextos.map(function (c, i) { return c.cultivo + ": " + fases[i].v; }).join(" · "),
-        origen: app.unirOrigenes(fases.map(function (f) { return f.o; }))
-      },
       desvioRinde: celdaNumero(
         motor.promedio(contextos.map(function (c) { return c.r.desvioRinde; })),
         "porcentaje",
@@ -675,14 +666,13 @@
     return tr;
   }
 
-  // Primera columna de la tabla (V-1): la campaña y, debajo, su contexto en renglones chicos (fase
-  // ENSO y desvío del rinde de los cultivos elegidos) y el botón del detalle.
+  // Primera columna de la tabla (V-1): la campaña y, debajo, su contexto en renglones chicos (el
+  // desvío del rinde de los cultivos elegidos) y el botón del detalle.
   function celdaDeCampana(fila, detalle) {
     var a = base();
     var c = fila.contexto;
     return a.el("th", { scope: "row", "class": "mc-fila-campana" }, [
       a.el("span", { "class": "mc-campana" }, fila.campana),
-      a.el("span", { "class": "mc-enso", "data-origen": c.enso.origen, title: c.enso.origen }, c.enso.texto),
       a.el("span", { "class": "mc-desvio" }, ["Rinde ", a.numero(c.desvioRinde.v, c.desvioRinde.formato, c.desvioRinde.origen)]),
       botonDetalle(fila.campana, detalle)
     ]);
