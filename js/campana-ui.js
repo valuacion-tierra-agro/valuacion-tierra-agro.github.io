@@ -25,7 +25,8 @@
     "color-texto": "#161616", "color-texto-suave": "#525252", "color-borde": "#c6c6c6", "color-borde-fuerte": "#8d8d8d",
     "color-fondo": "#ffffff", "color-superficie": "#ffffff", "color-superficie-2": "#f4f4f4",
     "color-trigo": "#8e6a00", "color-soja": "#007d79", "color-maiz": "#ba4e00",
-    "color-sin": "#8e6a00", "color-acento": "#0f62fe", "color-con": "#005d5d"
+    "color-sin": "#8e6a00", "color-acento": "#0f62fe", "color-con": "#005d5d",
+    "color-alerta": "#da1e28", "color-aviso": "#8e6a00", "color-logro": "#198038", "color-metal": "#e0e0e0", "color-proyectado": "#6f6f6f"
   };
 
   // estado: { paso, cargado, zona, cultivos: [..], usaFuturos: null|true|false, h (la del asistente: { cultivo: proporción cubierta }),
@@ -946,7 +947,7 @@
     pintarFecha();
     if (nodos.mas) { detalleAbiertoAntes = !nodos.mas.hidden; nodos.mas.hidden = false; }
     detalleAbierto = (nodos.plegablesTabla || []).map(function (d) { return d.getAttribute("open") !== null; });
-    (nodos.plegablesGraficos || []).concat(nodos.plegablesTabla || []).forEach(function (d) { d.setAttribute("open", ""); });
+    (nodos.plegablesTabla || []).forEach(function (d) { d.setAttribute("open", ""); });
     if (ultimaVista) { dibujarGraficos(vistaVer()); pintarVisual(ultimaVista); }
   }
 
@@ -955,7 +956,6 @@
     imprimiendo = false;
     if (V()) V().fijarImpresion(false);
     if (nodos.mas) nodos.mas.hidden = !detalleAbiertoAntes;
-    (nodos.plegablesGraficos || []).forEach(function (d) { d.removeAttribute("open"); });
     (nodos.plegablesTabla || []).forEach(function (d, i) { if (!detalleAbierto[i]) d.removeAttribute("open"); });
     if (ultimaVista) { dibujarGraficos(vistaVer()); pintarVisual(ultimaVista); }
   }
@@ -1181,7 +1181,7 @@
   }
 
   // ---------------------------------------------------------------------------------------
-  // Impacto visual: silos, medidor de riesgo y los seis años sobre una recta (con los números de campana.js)
+  // Impacto visual: silos, medidor de riesgo y línea de tiempo de los seis años (con los números de campana.js)
   // ---------------------------------------------------------------------------------------
 
   // Umbral de la hipótesis de la tesis (Parametros › B9, 50 %).
@@ -1214,35 +1214,47 @@
     // Silos: cada uno se llena con la proporción cubierta de su cultivo.
     var silos = v.nombres.map(function (c) {
       var x = cob.porCultivo[c];
-      return { cultivo: c, h: x.h, color: colorCultivo[c], etiqueta: pct(x.h) + " cubierto" };
+      return { cultivo: c, h: x.h, color: colorCultivo[c], etiqueta: pct(x.h) + " cubierto", pctTexto: pct(x.h),
+        toneladasTexto: fm().entero(x.toneladas) + " t fijadas de " + fm().entero(x.producidas) };
     });
 
     // Medidor: cuánto baja el desvío de tu rentabilidad con tu cobertura, contra no cubrirte.
     var reduccion = sin.desvio > 0 ? 1 - cob.desvio / sin.desvio : null;
     var origenRed = o("reducción del riesgo = 1 − desvío de R con tu cobertura ÷ desvío de R sin cubrir, en los 6 escenarios históricos");
 
-    // Recta: los seis años con tu cobertura y sin cubrirte, en una escala común a todas las proporciones.
+    // Línea de tiempo: los seis años con tu cobertura y sin cubrirte, en una escala común a todas las proporciones.
     var totalesCon = totalesPorEscenario(v, ev.escenario);
     var totalesSin = totalesPorEscenario(v, v.escenarios[0]);
     var todos = totalesCon.concat(totalesSin);
     C().PROPORCIONES.forEach(function (h) { todos = todos.concat(totalesPorEscenario(v, v.escenarios[h])); });
     var min = Math.min.apply(null, todos), max = Math.max.apply(null, todos);
-    var margen = (max - min) * 0.08 || 1;
-    var pos = function (t) { return (t - (min - margen)) / ((max - min) + 2 * margen); };
+    var margen = (max - min) * 0.16 || 1;
     var peor = indiceDe(totalesCon, false), mejor = indiceDe(totalesCon, true);
     var rango = totalesCon[mejor] - totalesCon[peor];
     var rangoSin = Math.max.apply(null, totalesSin) - Math.min.apply(null, totalesSin);
 
     V().actualizarPanel(panel, {
-      colores: { superficie: colorDe("color-superficie", "#262626"), borde: colorDe("color-borde", "#393939"), bordeFuerte: colorDe("color-borde-fuerte", "#6f6f6f") },
+      colores: { metal: colorDe("color-metal", "#2b2b2b") },
       silos: silos,
       medidor: {
         valor: reduccion, umbral: umbral, textoMarca: pct(umbral),
+        colores: { texto: colorDe("color-texto", "#f4f4f4"), suave: colorDe("color-texto-suave", "#c6c6c6"), superficie: colorDe("color-superficie", "#262626"),
+          fuente: colorDe("fuente-texto", "sans-serif"), alerta: colorDe("color-alerta", "#ff8389"), aviso: colorDe("color-aviso", "#f1c21b"), logro: colorDe("color-logro", "#42be65") },
         aria: reduccion === null ? "Riesgo que sacás: no se puede calcular" : "Riesgo que sacás: " + Math.round(Math.max(0, reduccion) * 100) + " %. Marca del " + pct(umbral) + ": umbral de la hipótesis."
+          + (reduccion > umbral ? " Superás el umbral de la hipótesis." : "")
       },
-      recta: {
-        campanas: v.campanas, con: totalesCon.map(pos), sin: totalesSin.map(pos), peor: peor, mejor: mejor,
-        textos: totalesCon.map(function (t) { return fm().usd(t) + " USD"; }),
+      linea: {
+        campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: peor, mejor: mejor, min: min - margen, max: max + margen, impreso: imprimiendo,
+        usdCon: totalesCon.map(function (t) { return fm().usd(t); }), usdSin: totalesSin.map(function (t) { return fm().usd(t); }),
+        formatoEje: function (x) { return fm().usd(Math.round(x / 1000)) + " mil"; },
+        colores: {
+          texto: colorDe("color-texto", "#f4f4f4"), suave: colorDe("color-texto-suave", "#c6c6c6"), borde: colorDe("color-borde", "#393939"),
+          bordeFuerte: colorDe("color-borde-fuerte", "#6f6f6f"), superficie: colorDe("color-superficie", "#262626"), superficie2: colorDe("color-superficie-2", "#393939"),
+          fuente: colorDe("fuente-texto", "sans-serif"), con: colorDe("color-con", "#009d9a"), sin: colorDe("color-sin", "#b28600"),
+          alerta: colorDe("color-alerta", "#ff8389"), logro: colorDe("color-logro", "#42be65"),
+          sobreAlerta: imprimiendo ? "#ffffff" : "#161616", sobreLogro: imprimiendo ? "#ffffff" : "#161616",
+          sombra: imprimiendo ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)"
+        },
         aria: "Los seis años de la tesis aplicados a tu campaña. Peor: " + v.campanas[peor] + ", " + fm().usd(totalesCon[peor]) + " USD. Mejor: " + v.campanas[mejor] + ", " + fm().usd(totalesCon[mejor]) + " USD."
       }
     });
@@ -1267,17 +1279,17 @@
       f.medidor.appendChild(texto(" menos de un año a otro que sin cubrirte." + marca));
     }
 
-    base().vaciar(f.recta);
-    f.recta.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
-    f.recta.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
-    f.recta.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
-    f.recta.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
-    f.recta.appendChild(texto(" USD) hay "));
-    f.recta.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
-    f.recta.appendChild(texto(" USD de diferencia" + (cubre ? "; sin cubrirte serían " : ".")));
+    base().vaciar(f.linea);
+    f.linea.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
+    f.linea.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
+    f.linea.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
+    f.linea.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
+    f.linea.appendChild(texto(" USD) hay "));
+    f.linea.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
+    f.linea.appendChild(texto(" USD de diferencia" + (cubre ? "; sin cubrirte serían " : ".")));
     if (cubre) {
-      f.recta.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
-      f.recta.appendChild(texto(" USD."));
+      f.linea.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
+      f.linea.appendChild(texto(" USD."));
     }
   }
 
@@ -1285,7 +1297,9 @@
   function repintarCobertura() {
     if (!ultimaVista) return;
     pintarPropuesta(ultimaVista);
+    pintarFranja(ultimaVista);
     pintarDetalle(vistaVer());
+    pintarHistorias(vistaVer());
     dibujarGraficos(vistaVer());
   }
 
@@ -1451,7 +1465,8 @@
       var g = graficos[clave];
       if (!g) { g = graficos[clave] = raiz.echarts.init(nodo, null, { renderer: "svg" }); }
       g.setOption(opcion, true);
-      g.resize(imprimiendo ? { width: ANCHO_IMPRESION, height: ALTO_IMPRESION } : undefined);
+      var ancho = clave === "escenarios" || clave === "comparacion";
+      g.resize(imprimiendo ? { width: ancho ? 690 : ANCHO_IMPRESION, height: clave === "comparacion" ? 215 : ancho ? 170 : ALTO_IMPRESION } : undefined);
       // Para imprimir el dibujo tiene que estar terminado antes de que el navegador arme la hoja: no se espera al próximo cuadro.
       if (imprimiendo && typeof g.getZr === "function") g.getZr().refreshImmediately();
     } catch (e) {
@@ -1474,8 +1489,16 @@
     return t;
   }
 
+  // Con la cobertura que se mira: lo que cobrás, lo que gastás y lo que te queda (la cascada), y R sobre tu tierra.
+  function partesDelMargen(v) {
+    var u = v.usuario;
+    var comision = u.comisionTotal;
+    var costos = u.ingresoTotal - u.mbTotal - comision;
+    return { ingreso: u.ingresoTotal, costos: costos, comision: comision, margen: u.mbTotal, r: u.r };
+  }
+
+  // Dibuja los cuatro gráficos de la historia: cultivos, cascada del margen, futuro contra spot por cultivo y los seis escenarios.
   function dibujarGraficos(v) {
-    if (nodos.mas && nodos.mas.hidden && !imprimiendo) return;
     if (!raiz.echarts) return;
     var fm = base().formato;
     var colores = { Trigo: colorDe("color-trigo", "#f1c21b"), Soja: colorDe("color-soja", "#08bdba"), "Maíz": colorDe("color-maiz", "#eb6200") };
@@ -1484,43 +1507,150 @@
     var borde = colorDe("color-borde", "#393939");
     var bordeFuerte = colorDe("color-borde-fuerte", "#6f6f6f");
     var anim = !sinAnimacion();
+    var cSin = colorDe("color-sin", "#b28600"), cCon = colorDe("color-con", "#009d9a"), cAcento = colorDe("color-acento", "#4589ff");
+    var cLogro = colorDe("color-logro", "#42be65"), cNeutro = colorDe("color-proyectado", "#a8a8a8");
+    var miles = function (x) { return fm.usd(Math.round(x / 1000)) + " mil"; };
+    var chica = imprimiendo ? 11 : 12;
 
     dibujar("torta", nodos.graficoTorta, {
       animation: anim, textStyle: txt,
       tooltip: tooltipDelTema({ trigger: "item", formatter: function (p) { return p.name + ": " + fm.entero(p.value) + " ha (" + fm.porcentaje(p.percent / 100) + ")"; } }),
-      series: [{ type: "pie", radius: ["42%", "70%"], avoidLabelOverlap: true, itemStyle: { borderColor: colorDe("color-fondo", "#161616"), borderWidth: 2 },
-        label: { show: false, color: txt.color }, labelLine: { show: false, lineStyle: { color: bordeFuerte } },
+      legend: { bottom: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica }, inactiveColor: bordeFuerte },
+      series: [{ type: "pie", radius: ["36%", "68%"], center: ["50%", "46%"], avoidLabelOverlap: true, itemStyle: { borderColor: colorDe("color-superficie", "#262626"), borderWidth: 3 },
+        label: { show: true, position: "inside", color: "#161616", fontWeight: 600, fontSize: chica + 1, formatter: function (p) { return fm.porcentaje(p.percent / 100); } },
+        labelLine: { show: false },
         data: v.nombres.map(function (c) { return { name: c, value: v.cultivos[c].ha, itemStyle: { color: colores[c] } }; }) }]
     });
 
-    var cats = ["Spot proyectado\n(0 % cubierto)", "Tu elección\n(" + etiquetaEleccion(v) + ")", "Futuro\n(100 % cubierto)"];
-    var vals = [v.resultados[0].mbHa, v.usuario.mbHa, v.resultados[1].mbHa];
-    var colsBarra = [colorDe("color-sin", "#b28600"), colorDe("color-acento", "#4589ff"), colorDe("color-con", "#009d9a")];
-    dibujar("comparacion", nodos.graficoComparacion, {
-      animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: 24, bottom: 48 },
-      tooltip: tooltipDelTema({ trigger: "item", formatter: function (p) { return p.name.replace("\n", " ") + ": " + fm.usd(p.value) + " USD/ha"; } }),
-      xAxis: { type: "category", data: cats, axisLabel: { color: txt.color, interval: 0 }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { lineStyle: { color: bordeFuerte } } },
-      yAxis: { type: "value", axisLabel: { color: suave, formatter: function (x) { return fm.usd(x); } }, splitLine: { lineStyle: { color: borde } } },
-      series: [{ type: "bar", barMaxWidth: 64, data: vals.map(function (x, i) { return { value: x, itemStyle: { color: colsBarra[i] } }; }),
-        label: { show: true, position: "top", color: txt.color, formatter: function (p) { return fm.usd(p.value); } } }]
+    // Cascada: ingreso, costos, comisión (si cubrís) y margen bruto, con R sobre la tierra.
+    var p = partesDelMargen(v);
+    var pasos = [{ n: "Ingreso\nbruto", base: 0, v: p.ingreso, c: cAcento }, { n: "Costos", base: p.ingreso - p.costos, v: p.costos, c: cNeutro }];
+    if (p.comision > 0) pasos.push({ n: "Comisión\nde futuros", base: p.ingreso - p.costos - p.comision, v: p.comision, c: cSin });
+    pasos.push({ n: "Margen\nbruto", base: 0, v: p.margen, c: cCon });
+    dibujar("cascada", nodos.graficoCascada, {
+      animation: anim, textStyle: txt, grid: { left: 64, right: 16, top: 44, bottom: 40 },
+      title: { text: "R sobre tu tierra: " + fm.porcentaje(p.r), right: 8, top: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica + 1, fontWeight: 600 } },
+      tooltip: tooltipDelTema({ trigger: "axis", axisPointer: { type: "none" }, formatter: function (ps) { var q = ps[1] || ps[0]; return q.name.replace("\n", " ") + ": " + fm.usd(pasos[q.dataIndex].v) + " USD"; } }),
+      xAxis: { type: "category", data: pasos.map(function (s) { return s.n; }), axisLabel: { color: txt.color, interval: 0, fontSize: chica }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { show: false } },
+      yAxis: { type: "value", axisLabel: { color: suave, fontSize: chica, formatter: miles }, splitLine: { lineStyle: { color: borde } } },
+      series: [
+        { type: "bar", stack: "c", silent: true, itemStyle: { color: "transparent" }, data: pasos.map(function (s) { return s.base; }), tooltip: { show: false } },
+        { type: "bar", stack: "c", barMaxWidth: 70, data: pasos.map(function (s) { return { value: s.v, itemStyle: { color: s.c } }; }),
+          label: { show: true, position: "top", color: txt.color, fontSize: chica, formatter: function (q) { return (q.dataIndex === 1 || (pasos[q.dataIndex].n.indexOf("Comisión") === 0) ? "− " : "") + miles(q.value); } } }
+      ]
     });
 
-    var series = [{ h: 0, nombre: "0 % cubierto", color: colorDe("color-sin", "#b28600") }, { h: 1, nombre: "100 % cubierto", color: colorDe("color-con", "#009d9a") }];
+    // Futuro contra spot proyectado, por cultivo (margen bruto por hectárea), con la conclusión anotada en el gráfico.
+    var spot = v.resultados[0], fut = v.resultados[1];
+    var elegis = hUniforme(v.hPorCultivo);
+    var conTuEleccion = elegis === null || (elegis > 0 && elegis < 1);
+    var seriesFut = [{ name: "Spot proyectado", color: cSin, valores: v.nombres.map(function (c) { return spot.porCultivo[c].mbHa; }) }];
+    if (conTuEleccion) seriesFut.push({ name: "Tu elección", color: cAcento, valores: v.nombres.map(function (c) { return v.usuario.porCultivo[c].mbHa; }) });
+    seriesFut.push({ name: "Futuro (100 % cubierto)", color: cCon, valores: v.nombres.map(function (c) { return fut.porCultivo[c].mbHa; }) });
+    dibujar("comparacion", nodos.graficoComparacion, {
+      animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: imprimiendo ? 74 : 70, bottom: 32 },
+      title: { text: conclusionFuturo(v), left: 0, top: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica + 1, fontWeight: 600, lineHeight: 18 },
+        backgroundColor: colorDe("color-superficie-2", "#393939"), padding: [6, 10], borderColor: cCon, borderWidth: 0 },
+      legend: { top: imprimiendo ? 44 : 42, right: 0, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica }, inactiveColor: bordeFuerte },
+      tooltip: tooltipDelTema({ trigger: "item", formatter: function (q) { return q.seriesName + " · " + q.name + ": " + fm.usd(q.value) + " USD/ha"; } }),
+      xAxis: { type: "category", data: v.nombres, axisLabel: { color: txt.color, interval: 0 }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { show: false } },
+      yAxis: { type: "value", axisLabel: { color: suave, fontSize: chica, formatter: function (x) { return fm.usd(x); } }, splitLine: { lineStyle: { color: borde } } },
+      series: seriesFut.map(function (s) {
+        return { name: s.name, type: "bar", barMaxWidth: 46, itemStyle: { color: s.color }, data: s.valores,
+          label: { show: true, position: "top", color: txt.color, fontSize: chica, formatter: function (q) { return fm.usd(q.value); } } };
+      })
+    });
+
+    var series = [{ h: 0, nombre: "0 % cubierto", color: cSin }, { h: 1, nombre: "100 % cubierto", color: cCon }];
     var uniformeG = hUniforme(v.hPorCultivo);
     if (uniformeG === null || (uniformeG > 0 && uniformeG < 1)) {
-      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu elección (por cultivo)" : Math.round(uniformeG * 100) + " % cubierto", color: colorDe("color-acento", "#4589ff"), discontinua: true });
+      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu elección (por cultivo)" : Math.round(uniformeG * 100) + " % cubierto", color: cAcento, discontinua: true });
     }
+    var peorEsc = v.escenarios[0].r.indexOf(Math.min.apply(null, v.escenarios[0].r));
     dibujar("escenarios", nodos.graficoEscenarios, {
       animation: anim, textStyle: txt, grid: { left: 56, right: 16, top: imprimiendo ? 64 : 40, bottom: 32 },
       // En papel el gráfico es angosto: la leyenda ocupa dos renglones y el área del dibujo arranca debajo de ella, sin pisar el eje.
-      legend: { top: 0, itemGap: imprimiendo ? 10 : 10, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: imprimiendo ? 11 : 12 }, inactiveColor: bordeFuerte },
+      legend: { top: 0, itemGap: 10, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica }, inactiveColor: bordeFuerte },
       tooltip: tooltipDelTema({ trigger: "axis", axisPointer: { lineStyle: { color: bordeFuerte } }, valueFormatter: function (x) { return fm.porcentaje(x); } }),
-      xAxis: { type: "category", data: v.campanas, boundaryGap: false, axisLabel: { color: txt.color }, axisLine: { lineStyle: { color: bordeFuerte } } },
-      yAxis: { type: "value", scale: true, axisLabel: { color: suave, formatter: function (x) { return fm.porcentaje(x); } }, splitLine: { lineStyle: { color: borde } } },
-      series: series.map(function (s) {
-        return { name: s.nombre, type: "line", symbolSize: 7, itemStyle: { color: s.color }, lineStyle: { color: s.color, width: 3, type: s.discontinua ? "dashed" : "solid" }, data: (s.escenario || v.escenarios[s.h]).r };
+      xAxis: { type: "category", data: v.campanas, boundaryGap: false, axisLabel: { color: txt.color, fontSize: chica }, axisLine: { lineStyle: { color: bordeFuerte } } },
+      yAxis: { type: "value", scale: true, axisLabel: { color: suave, fontSize: chica, formatter: function (x) { return fm.porcentaje(x); } }, splitLine: { lineStyle: { color: borde } } },
+      series: series.map(function (s, k) {
+        var degradado = { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: s.color + "66" }, { offset: 1, color: s.color + "00" }] };
+        var o = { name: s.nombre, type: "line", symbolSize: 8, smooth: 0.25, itemStyle: { color: s.color }, lineStyle: { color: s.color, width: 3, type: s.discontinua ? "dashed" : "solid" },
+          areaStyle: { color: degradado }, data: (s.escenario || v.escenarios[s.h]).r };
+        // El año clave (el peor sin cubrirte) queda resaltado en una banda.
+        if (k === 0) o.markArea = { silent: true, itemStyle: { color: colorDe("color-alerta", "#ff8389") + "26" }, label: { show: true, position: "insideTop", color: txt.color, fontSize: chica, formatter: "Peor año" },
+          data: [[{ xAxis: peorEsc - 0.4 }, { xAxis: peorEsc + 0.4 }]] };
+        return o;
       })
     });
+  }
+
+  function signoUsd(x) { return (x >= 0 ? "+" : "−") + fm().usd(Math.abs(x)); }
+
+  // La conclusión del gráfico de futuro contra spot: cuánto más (o menos) deja cubrir todo con futuros, en USD por hectárea.
+  function conclusionFuturo(v) {
+    var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
+    return "Cubrir todo con futuros: " + signoUsd(d) + " USD/ha\n" + (d >= 0 ? "más" : "menos") + " que vender al spot proyectado";
+  }
+
+  // Titulares y líneas de lectura de cada gráfico (los números salen de campana.js, con su origen al pasar el mouse).
+  function pintarHistorias(v) {
+    var o = function (f) { return origenDe(f, v, TODO); };
+    var h = nodos.historias;
+    var p = partesDelMargen(v);
+    var frase = function (nodo, partes) { base().vaciar(nodo); partes.forEach(function (x) { nodo.appendChild(typeof x === "string" ? texto(x) : x); }); };
+
+    // Cultivos
+    var mayor = v.nombres.reduce(function (a, c) { return v.cultivos[c].ha > v.cultivos[a].ha ? c : a; }, v.nombres[0]);
+    var partesCultivos = v.nombres.map(function (c) { return c + " " + fm().entero(v.cultivos[c].ha) + " ha"; }).join(" · ");
+    frase(h.torta.titular, v.nombres.length === 1
+      ? ["Toda tu campaña es ", v.nombres[0].toLowerCase(), ": ", num(v.hectareasTotales, "entero", o("hectáreas totales")), " ha."]
+      : [mayor, " es ", num(v.cultivos[mayor].proporcion, "porcentaje", o("proporción de hectáreas del cultivo")), " de tu campaña."]);
+    frase(h.torta.lectura, ["Hectáreas de cada cultivo: " + partesCultivos + ". Cada cultivo se calcula con su propio rinde, costos y precio."]);
+
+    // Cascada
+    var porCada = p.ingreso > 0 ? p.margen / p.ingreso * 100 : 0;
+    frase(h.cascada.titular, p.ingreso > 0
+      ? ["De cada 100 USD que cobrás, te quedan ", num(porCada, "entero", o("margen bruto ÷ ingreso bruto × 100")), " de margen bruto."]
+      : ["Tu margen bruto esperado: ", num(p.margen, "usd", o(TEXTO_FORMULA_MB)), " USD."]);
+    frase(h.cascada.lectura, ["Ingreso ", num(p.ingreso, "usd", o("Ingreso total = Σ hectáreas × Ȳ × P")), " − costos ", num(p.costos, "usd", o("costos totales = ingreso − margen bruto − comisión")),
+      (p.comision > 0 ? " − comisión " : ""), (p.comision > 0 ? num(p.comision, "usd", o("COM = comisión × toneladas cubiertas × F27")) : ""),
+      " = margen bruto ", num(p.margen, "usd", o(TEXTO_FORMULA_MB)), " USD. Sobre el valor de tu tierra (", num(v.valorTotal, "usd", o("valor de la tierra = hectáreas × V")), " USD) es una rentabilidad R de ",
+      num(p.r, "porcentaje", o("R = MB total ÷ (hectáreas × V)")), "."]);
+
+    // Futuro contra spot
+    var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
+    var mejores = v.nombres.filter(function (c) { return v.resultados[1].porCultivo[c].mbHa > v.resultados[0].porCultivo[c].mbHa; });
+    frase(h.futuro.titular, ["Con futuros fijás el precio hoy; el spot proyectado es un supuesto del grupo, no un pronóstico."]);
+    frase(h.futuro.lectura, [d >= 0 ? "Cubriendo todo, tu margen por hectárea sube " : "Cubriendo todo, tu margen por hectárea baja ", num(Math.abs(d), "usd", o("diferencia de MB por hectárea entre cubrir todo y no cubrir")),
+      " USD" + (v.nombres.length > 1 ? "; en " + (mejores.length ? mejores.join(" y ").toLowerCase() + " el futuro rinde más que el spot." : "ningún cultivo el futuro rinde más que el spot.") : ".")]);
+
+    // Seis escenarios
+    var rs0 = v.escenarios[0].r, rs = v.escenarioUsuario.r;
+    var rango = function (r) { return [Math.min.apply(null, r), Math.max.apply(null, r)]; };
+    var a = rango(rs0), b = rango(rs);
+    var cubre = hayCobertura(v.hPorCultivo);
+    frase(h.escenarios.titular, ["Sin cubrirte, tu rentabilidad pasó de ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " a ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir")),
+      " según el año" + (cubre ? "; cubriendo, de " : "."), cubre ? num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")) : "", cubre ? " a " : "", cubre ? num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura")) : "", cubre ? "." : ""]);
+    frase(h.escenarios.lectura, ["Cada punto aplica a tu campo la sorpresa de precio de una campaña de la tesis (eje horizontal): cuanto más junto, menos riesgo."]);
+  }
+
+  // Franja de resumen: una frase grande con las cifras que cuentan (margen esperado y cómo mejora el peor año al cubrirte).
+  function pintarFranja(v) {
+    var cont = nodos.franja;
+    base().vaciar(cont);
+    var hp = hDe(estado.hVer, v.nombres);
+    var cob = C().cobertura(v, hp);
+    var sin = C().cobertura(v, 0);
+    var cubre = hayCobertura(hp);
+    var mejora = cob.peorMbTotal - sin.peorMbTotal;
+    var o = function (f) { return origenDe(f, v, TODO); };
+    var partes = [el("span", { "class": "sc-franja-campana" }, "Tu campaña 2026/27"),
+      el("p", { "class": "sc-franja-titular" }, [numA("franja-margen", cob.mbTotal, "usd", o(TEXTO_FORMULA_MB)), " USD de margen esperado",
+        cubre ? "; cubriendo el " + (hUniforme(hp) !== null ? pct(hUniforme(hp)) : "que elegiste") + ", tu peor año " + (mejora >= 0 ? "mejora " : "empeora ") : "; sin cubrirte, tu peor año sería de ",
+        cubre ? numA("franja-peor", Math.abs(mejora), "usd", o("diferencia entre los peores MB totales")) : numA("franja-peor", sin.peorMbTotal, "usd", o("peor MB total de los 6 escenarios históricos")), " USD."])];
+    partes.forEach(function (n) { cont.appendChild(n); });
   }
 
   function redimensionar() {
@@ -1550,6 +1680,8 @@
     pintarCalendarioResultado(vista);
     pintarPropuesta(vista);
     pintarDetalle(vistaVer());
+    pintarFranja(vista);
+    pintarHistorias(vistaVer());
     pintarSupuestos(vista, lectura.entrada);
     pintarEncabezado();
     pintarFecha();
@@ -1591,13 +1723,6 @@
     nodos.botonMas.setAttribute("aria-expanded", abrir ? "true" : "false");
     nodos.botonMas.textContent = abrir ? "Ocultar el detalle" : "Ver más detalle";
     if (abrir && ultimaVista) dibujarGraficos(vistaVer());
-  }
-
-  function plegableDeGrafico(titulo, figura) {
-    var d = el("details", { "class": "sc-avanzado sc-plegable-grafico" }, [el("summary", null, titulo), figura]);
-    d.addEventListener("toggle", function () { if (ultimaVista) dibujarGraficos(vistaVer()); });
-    nodos.plegablesGraficos.push(d);
-    return d;
   }
 
   function contenedorDeGrafico(clave, titulo, eje, etiquetaAria) {
@@ -1642,24 +1767,46 @@
     nodos.comparacion = el("div", { "class": "sc-comparacion" });
     nodos.riesgo = el("div", { "class": "sc-riesgo" });
     nodos.lectura = el("div", { "class": "tarjeta sc-lectura" });
-    nodos.plegablesGraficos = [];
+    nodos.historias = {};
     nodos.visual = V() ? V().crearPanel() : null;
-    var figTorta = contenedorDeGrafico("graficoTorta", "Cultivos de la campaña (proporción de hectáreas)", null, "Gráfico de torta con la proporción de hectáreas de cada cultivo");
-    var figComp = contenedorDeGrafico("graficoComparacion", "Futuro contra spot proyectado", "margen bruto en USD por hectárea", "Gráfico de barras: margen bruto por hectárea con spot proyectado, con la cobertura elegida y con futuro");
-    var figEsc = contenedorDeGrafico("graficoEscenarios", "Rentabilidad R en los seis escenarios históricos", "R (margen bruto ÷ valor de la tierra); eje horizontal: campaña cuya sorpresa de precio se aplica", "Gráfico de líneas: rentabilidad en cada escenario histórico, sin cubrir y cubierto");
-    nodos.mas = el("div", { "class": "sc-mas", id: "sc-mas" }, [
-      nodos.coberturas,
-      plegableDeGrafico("Ver el gráfico de cultivos", el("div", null, [figTorta, nodos.proporciones])),
-      plegableDeGrafico("Ver el gráfico de futuro contra spot", figComp),
-      plegableDeGrafico("Ver el gráfico de los seis escenarios", figEsc),
-      nodos.comparacion, nodos.riesgo, nodos.lectura
-    ]);
+    var historia = function (clave, claveGrafico, titulo, eje, aria) {
+      var titular = el("p", { "class": "sc-historia-titular" });
+      var lectura = el("p", { "class": "sc-frase sc-historia-lectura" });
+      nodos.historias[clave] = { titular: titular, lectura: lectura };
+      return el("section", { "class": "tarjeta sc-historia sc-historia-" + clave }, [titular, contenedorDeGrafico(claveGrafico, titulo, eje, aria), lectura]);
+    };
+    var hTorta = historia("torta", "graficoTorta", "Cultivos de la campaña (hectáreas)", null, "Gráfico de torta con la proporción de hectáreas de cada cultivo");
+    var hCascada = historia("cascada", "graficoCascada", "Del ingreso al margen bruto", "USD de toda tu campaña; arriba, R sobre tu tierra", "Gráfico de cascada: ingreso bruto, costos, comisión y margen bruto de tu campaña");
+    var hFuturo = historia("futuro", "graficoComparacion", "Futuro contra spot proyectado, por cultivo", "margen bruto en USD por hectárea", "Gráfico de barras por cultivo: margen bruto por hectárea con spot proyectado, con tu cobertura y con futuro");
+    var hEscenarios = historia("escenarios", "graficoEscenarios", "Rentabilidad R en los seis escenarios históricos", "R (margen bruto ÷ valor de la tierra); eje horizontal: campaña cuya sorpresa de precio se aplica", "Gráfico de líneas: rentabilidad en cada escenario histórico, sin cubrir y cubierto");
+    nodos.mas = el("div", { "class": "sc-mas", id: "sc-mas" }, [nodos.coberturas, nodos.proporciones, nodos.comparacion, nodos.riesgo, nodos.lectura]);
     nodos.mas.hidden = true;
-    nodos.botonMas = el("button", { type: "button", "class": "sc-boton sc-boton-mas", id: "sc-mas-boton", "aria-expanded": "false", "aria-controls": "sc-mas" }, "Ver más detalle");
+    nodos.botonMas = el("button", { type: "button", "class": "sc-boton sc-boton-mas", id: "sc-mas-boton", "aria-expanded": "false", "aria-controls": "sc-mas" }, "Ver más detalle (tablas)");
     nodos.botonMas.addEventListener("click", alternarDetalle);
+    nodos.franja = el("div", { "class": "sc-franja", id: "sc-franja" });
+    // Tres bloques, uno por pregunta: qué tengo, qué riesgo corro y qué me conviene hacer.
+    var bloques = [["sc-b-campana", "01", "Tu campaña", [nodos.sabemos, hTorta, hCascada]], ["sc-b-riesgo", "02", "Tu riesgo", [nodos.hoy, hEscenarios]],
+      ["sc-b-propuesta", "03", "Tu propuesta", [nodos.propuesta, hFuturo]]];
+    nodos.nav = el("nav", { "class": "sc-nav", "aria-label": "Bloques de los resultados" });
+    var lista = el("ol", { "class": "sc-nav-lista" });
+    nodos.nav.appendChild(lista);
+    var items = [];
+    var secciones = bloques.map(function (b) {
+      var sec = el("section", { "class": "sc-bloque-grande", id: b[0], "aria-labelledby": b[0] + "-t" }, [
+        el("header", { "class": "sc-bloque-cabecera" }, [el("span", { "class": "sc-bloque-num", "aria-hidden": "true" }, b[1]), el("h2", { "class": "sc-bloque-titulo", id: b[0] + "-t" }, b[2])])
+      ].concat(b[3]));
+      var boton = el("button", { type: "button", "class": "sc-nav-boton", "data-bloque": b[0] }, [el("span", { "class": "sc-nav-num", "aria-hidden": "true" }, b[1]), b[2]]);
+      boton.addEventListener("click", function () {
+        try { sec.scrollIntoView({ behavior: V() && V().sinMovimiento() ? "auto" : "smooth", block: "start" }); } catch (e) { sec.scrollIntoView(); }
+      });
+      lista.appendChild(el("li", null, boton));
+      items.push({ boton: boton, seccion: sec });
+      return sec;
+    });
+    nodos.marco = el("div", { "class": "sc-marco" }, [nodos.nav, el("div", { "class": "sc-cuerpo" }, secciones)]);
     nodos.ok = el("div", { "class": "sc-ok" }, [
       nodos.cabeceraImpresion, nodos.encabezado, nodos.acciones, nodos.supuestos,
-      nodos.resumen, nodos.sabemos, nodos.hoy, nodos.propuesta,
+      nodos.franja, nodos.resumen, nodos.marco,
       el("div", { "class": "sc-mas-caja" }, [nodos.botonMas, nodos.mas]),
       el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto no es asesoramiento financiero. "),
         "El precio de cosecha proyectado es un supuesto del grupo (el crecimiento anual compuesto del precio disponible a cosecha entre 2020/21 y 2025/26), no un pronóstico. " +
@@ -1668,7 +1815,11 @@
     nodos.resultados = el("div", { "class": "mc-resultados sc-resultados", id: "sc-resultados", "aria-live": "polite" }, [nodos.avisoLink, nodos.vacio, nodos.ok]);
     nodos.resultados.hidden = true;
     contenedor.appendChild(nodos.resultados);
-    if (V()) { V().entrada(nodos.sabemos); V().entrada(nodos.hoy); }
+    if (V()) {
+      secciones.forEach(function (sec) { Array.prototype.slice.call(sec.childNodes).forEach(function (n) { V().entrada(n); }); });
+      V().entrada(nodos.franja);
+      V().espiar(items);
+    }
   }
 
   function montar(contenedor) {

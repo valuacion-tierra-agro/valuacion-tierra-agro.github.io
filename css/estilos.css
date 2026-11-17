@@ -32,6 +32,17 @@
   --color-k-base: #a56eff;
   --color-k-beta: #ee5396;
   --color-supuesto: #33b1ff;
+  --color-logro: #42be65;            /* umbral superado y mejor año */
+  --color-franja: #0043ce;           /* franja de resumen de los resultados */
+  --color-metal: #353535;            /* chapa vacía de los silos */
+  --color-surco: rgba(255, 255, 255, 0.07);       /* surcos finos de la franja */
+  --color-franja-suave: rgba(255, 255, 255, 0.85);
+  --color-trazo: #000000;            /* anillos y nervios de los silos */
+  --color-boca: rgba(0, 0, 0, 0.45);
+  --color-chapa: rgba(22, 22, 22, 0.88);          /* placa con el % dentro del silo */
+  --color-sobre-logro: #161616;
+  --color-pulso: rgba(66, 190, 101, 0.55);
+  --color-pulso-fin: rgba(66, 190, 101, 0);
   /* Ocho colores para las zonas del gráfico del valor de la tierra: reutilizan los del tema, así cambian solos en papel */
   --color-zona-1: var(--color-acento);
   --color-zona-2: var(--color-con);
@@ -2347,6 +2358,271 @@ html.lenis body {
   overflow: clip;
 }
 
+/* Franja de resumen: una frase grande sobre el azul de IBM, con surcos finos de fondo */
+.sc-franja {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 1.75rem 1.25rem 2rem;
+  color: var(--color-sobre-acento);
+  background-color: var(--color-franja);
+  background-image: repeating-linear-gradient(100deg, var(--color-surco) 0, var(--color-surco) 2px, transparent 2px, transparent 20px);
+  border-bottom: 4px solid var(--color-acento-claro);
+}
+
+@media (min-width: 760px) {
+  .sc-franja {
+    padding: 2.5rem 2.5rem 2.75rem;
+  }
+}
+
+.sc-franja-campana {
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-franja-suave);
+}
+
+.sc-franja-titular {
+  margin: 0;
+  max-width: 46rem;
+  font-family: var(--fuente-titulos);
+  font-size: clamp(1.6rem, 3.6vw, 2.9rem);
+  font-weight: 300;
+  line-height: 1.18;
+}
+
+.sc-franja-titular .sc-numero,
+.sc-franja-titular [data-origen] {
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--color-sobre-acento);
+}
+
+/* Marco: barra de bloques (arriba en el celular, a la izquierda en pantallas anchas) y los tres bloques */
+.sc-marco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.sc-nav {
+  position: sticky;
+  top: 3rem;
+  z-index: 4;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  background-color: var(--color-fondo);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.sc-nav-lista {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.sc-nav-boton {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  color: var(--color-texto-suave);
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.sc-nav-boton:hover {
+  color: var(--color-texto);
+  background-color: var(--color-superficie-2);
+}
+
+.sc-nav-boton[data-activo] {
+  color: var(--color-texto);
+  border-bottom-color: var(--color-acento);
+}
+
+.sc-nav-num {
+  font-size: 0.75rem;
+  color: var(--color-acento-claro);
+}
+
+@media (min-width: 1000px) {
+  .sc-marco {
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .sc-nav {
+    top: 4.5rem;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-bottom: 0;
+  }
+
+  .sc-nav-lista {
+    flex-direction: column;
+    gap: 0;
+    border-left: 2px solid var(--color-borde);
+  }
+
+  .sc-nav-boton {
+    flex-direction: column;
+    gap: 0.1rem;
+    width: 100%;
+    margin-left: -2px;
+    padding: 0.75rem 0.75rem;
+    border-bottom: 0;
+    border-left: 4px solid transparent;
+    font-size: 1.0625rem;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .sc-nav-boton[data-activo] {
+    border-left-color: var(--color-acento);
+  }
+}
+
+.sc-cuerpo {
+  display: grid;
+  gap: 4rem;
+  min-width: 0;
+}
+
+.sc-bloque-grande {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  scroll-margin-top: 6rem;
+}
+
+.sc-bloque-cabecera {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-borde-fuerte);
+}
+
+.sc-bloque-num {
+  font-family: var(--fuente-titulos);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--color-acento);
+}
+
+.sc-bloque-titulo {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+@media (min-width: 1000px) {
+  .sc-bloque-grande {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .sc-bloque-grande > * {
+    grid-column: 1 / -1;
+  }
+
+  .sc-bloque-grande > .sc-historia-torta {
+    grid-column: 1;
+  }
+
+  .sc-bloque-grande > .sc-historia-cascada {
+    grid-column: 2;
+  }
+}
+
+/* Cada gráfico de la historia: titular con la conclusión, el dibujo y una línea de lectura */
+.sc-historia {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  border-top: 3px solid var(--color-acento);
+}
+
+.sc-historia-cascada {
+  border-top-color: var(--color-con);
+}
+
+.sc-historia-futuro {
+  border-top-color: var(--color-sin);
+}
+
+.sc-historia-titular {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: clamp(1.3rem, 2.6vw, 1.85rem);
+  font-weight: 300;
+  line-height: 1.25;
+}
+
+.sc-historia .sc-figura {
+  margin: 0;
+}
+
+.sc-historia-lectura {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* Microinteracciones de los resultados: las tarjetas y los botones responden al mouse */
+.sc-resultados .tarjeta {
+  transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.sc-resultados .tarjeta:hover {
+  transform: translateY(-3px);
+  background-color: var(--color-superficie-2);
+}
+
+.sc-resultados .sc-chip,
+.sc-resultados .sc-boton {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.sc-resultados .sc-chip:hover,
+.sc-resultados .sc-boton:hover {
+  transform: translateY(-2px);
+}
+
+.sc-resultados .sc-chip:active,
+.sc-resultados .sc-boton:active {
+  transform: scale(0.97);
+}
+
+.sc-resultados .sc-numero {
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+}
+
+.sc-resultados .sc-claves-cuatro .sc-numero {
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+}
+
+.sc-resultados .sc-principal {
+  border-top: 3px solid var(--color-con);
+}
+
+/* Panel visual: silos, medidor y línea de tiempo */
 .sc-visual {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2355,7 +2631,7 @@ html.lenis body {
 
 @media (min-width: 1000px) {
   .sc-visual {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   }
 
   .sc-bloque-silos {
@@ -2371,8 +2647,8 @@ html.lenis body {
 
 .sc-visual-bloque h4 {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 400;
+  font-size: 1.25rem;
+  font-weight: 300;
 }
 
 .sc-visual-cuerpo {
@@ -2386,43 +2662,75 @@ html.lenis body {
 
 .sc-visual-grande {
   font-family: var(--fuente-titulos);
-  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-size: clamp(1.9rem, 6vw, 2.8rem);
   font-weight: 300;
   font-variant-numeric: tabular-nums;
   color: var(--color-texto);
 }
 
-/* Silos: uno por cultivo, con el líquido de ECharts; si no está liquidfill queda la barra con la misma forma */
+/* Silos de chapa: uno por cultivo, con su color; el líquido de ECharts sube y baja con una ola */
 .sc-silos {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 1.5rem 2.5rem;
+  gap: 1.25rem 1.5rem;
 }
 
 .sc-silo {
+  --silo: var(--color-con);
   display: grid;
   justify-items: center;
   gap: 0.5rem;
   margin: 0;
+  padding: 1rem 1.25rem 1.1rem;
+  background-color: var(--color-superficie-2);
+  border-top: 4px solid var(--silo);
+  transition: transform 0.25s ease;
+}
+
+.sc-silo:hover {
+  transform: translateY(-4px);
+}
+
+.sc-cultivo-trigo {
+  --silo: var(--color-trigo);
+}
+
+.sc-cultivo-soja {
+  --silo: var(--color-soja);
+}
+
+.sc-cultivo-maiz {
+  --silo: var(--color-maiz);
 }
 
 .sc-silo-caja {
   position: relative;
-  width: 120px;
-  height: 170px;
+  width: 180px;
+  height: 180px;
 }
 
-.sc-silo-ec {
+.sc-silo-ec,
+.sc-silo-cuerpo,
+.sc-silo-dibujo {
   position: absolute;
   inset: 0;
 }
 
+.sc-silo-dibujo {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Si no está liquidfill, una barra con la misma silueta que se llena igual */
 .sc-silo-cuerpo {
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(0 26%, 50% 0, 100% 26%, 100% 100%, 0 100%);
-  background-color: var(--color-borde);
+  left: 24%;
+  right: 24%;
+  top: 2%;
+  bottom: 2%;
+  clip-path: polygon(0 24%, 50% 0, 100% 24%, 100% 100%, 0 100%);
+  background-color: var(--color-metal);
   display: flex;
   align-items: flex-end;
 }
@@ -2430,20 +2738,8 @@ html.lenis body {
 .sc-silo-relleno {
   width: 100%;
   height: 0;
-  background-color: var(--color-con);
+  background-color: var(--silo);
   transition: height 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.sc-cultivo-trigo .sc-silo-relleno {
-  background-color: var(--color-trigo);
-}
-
-.sc-cultivo-soja .sc-silo-relleno {
-  background-color: var(--color-soja);
-}
-
-.sc-cultivo-maiz .sc-silo-relleno {
-  background-color: var(--color-maiz);
 }
 
 .sc-silo-caja[data-modo="liquido"] .sc-silo-cuerpo,
@@ -2451,17 +2747,89 @@ html.lenis body {
   display: none;
 }
 
+.sc-silo-contorno {
+  stroke: var(--silo);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.sc-silo-anillos line {
+  stroke: var(--color-trazo);
+  stroke-opacity: 0.4;
+  stroke-width: 1.5;
+}
+
+.sc-silo-nervios line {
+  stroke: var(--color-trazo);
+  stroke-opacity: 0.3;
+  stroke-width: 1;
+}
+
+.sc-silo-tapa {
+  fill: var(--silo);
+}
+
+.sc-silo-boca {
+  fill: var(--color-boca);
+  stroke: var(--silo);
+  stroke-width: 1.5;
+}
+
+.sc-silo-escalera line {
+  stroke: var(--color-texto);
+  stroke-opacity: 0.75;
+  stroke-width: 1.3;
+}
+
+.sc-silo-zocalo {
+  fill: var(--color-borde-fuerte);
+}
+
+.sc-silo-chapa {
+  position: absolute;
+  top: 58%;
+  left: 50%;
+  padding: 0.1rem 0.65rem;
+  background-color: var(--color-chapa);
+  color: var(--color-sobre-acento);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.sc-silo-pct {
+  font-family: var(--fuente-titulos);
+  font-size: 1.75rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
 .sc-silo-texto {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   text-align: center;
   color: var(--color-texto-suave);
 }
 
-/* Medidor: arco de media vuelta; la marca es el umbral de la hipótesis */
+.sc-silo-texto strong {
+  font-weight: 600;
+  color: var(--silo);
+}
+
+/* Medidor: arco grueso por segmentos con aguja; la marca es el umbral de la hipótesis */
 .sc-medidor {
-  position: relative;
+  display: grid;
+  justify-items: center;
   width: 100%;
-  max-width: 20rem;
+  max-width: 26rem;
+}
+
+.sc-medidor-ec {
+  width: 100%;
+  height: 230px;
+}
+
+.sc-medidor[data-modo="aguja"] .sc-medidor-svg,
+.sc-medidor[data-modo="segmentos"] .sc-medidor-ec {
+  display: none;
 }
 
 .sc-medidor-svg {
@@ -2470,18 +2838,33 @@ html.lenis body {
   height: auto;
 }
 
-.sc-medidor-pista,
-.sc-medidor-valor {
-  stroke-width: 14;
+.sc-seg {
+  fill: var(--color-borde);
+  transition: fill 0.35s ease;
 }
 
-.sc-medidor-pista {
-  stroke: var(--color-borde);
+.sc-seg-on {
+  fill: var(--color-con);
 }
 
-.sc-medidor-valor {
-  stroke: var(--color-con);
-  transition: stroke-dashoffset 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+.sc-seg-on.sc-seg-pasa {
+  fill: var(--color-logro);
+}
+
+.sc-aguja {
+  transform-origin: 110px 144px;
+  transform: rotate(-90deg);
+  transition: transform 1.3s cubic-bezier(0.3, 1.35, 0.5, 1);
+}
+
+.sc-aguja-cuerpo {
+  fill: var(--color-texto);
+}
+
+.sc-aguja-eje {
+  fill: var(--color-texto);
+  stroke: var(--color-superficie);
+  stroke-width: 3;
 }
 
 .sc-medidor-marca {
@@ -2490,7 +2873,8 @@ html.lenis body {
 }
 
 .sc-medidor-rotulo {
-  font-size: 11px;
+  font-size: 9px;
+  font-weight: 600;
   fill: var(--color-texto);
 }
 
@@ -2500,95 +2884,76 @@ html.lenis body {
 }
 
 .sc-medidor-numero {
-  position: absolute;
-  right: 0;
-  bottom: 14%;
-  left: 0;
-  margin: 0;
-  text-align: center;
+  margin: -0.5rem 0 0;
   font-family: var(--fuente-titulos);
-  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  font-size: clamp(2.6rem, 7vw, 3.6rem);
   font-weight: 300;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-/* Recta: un punto por campaña; al subir la cobertura se juntan (la transición se apaga con «menos movimiento») */
-.sc-recta {
-  position: relative;
+.sc-medidor-supera {
+  margin: 0.75rem 0 0;
+  padding: 0.4rem 0.9rem;
+  background-color: var(--color-logro);
+  color: var(--color-sobre-logro);
+  font-weight: 600;
+  animation: sc-pulso 2.4s ease-in-out infinite;
+}
+
+.sc-medidor-supera[hidden] {
+  display: none;
+}
+
+@keyframes sc-pulso {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-pulso);
+  }
+
+  50% {
+    box-shadow: 0 0 0 9px var(--color-pulso-fin);
+  }
+}
+
+/* Línea de tiempo: la mancuerna de cada campaña la dibuja ECharts; sin él queda la lista de las seis campañas */
+.sc-linea {
   width: 100%;
-  height: 5.5rem;
-  padding: 0 5rem;
 }
 
-.sc-recta-linea {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  left: 0;
-  height: 2px;
-  background-color: var(--color-borde-fuerte);
-}
-
-.sc-recta-puntos {
-  position: absolute;
-  inset: 0 5rem;
-}
-
-.sc-punto-con,
-.sc-punto-sin {
-  position: absolute;
-  top: 50%;
-  border-radius: 50%;
-  transition: left 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.sc-punto-con {
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  background-color: var(--color-con);
-  border: 2px solid var(--color-fondo);
-}
-
-.sc-punto-sin {
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
-  border: 2px solid var(--color-sin);
-}
-
-.sc-punto-etiqueta {
-  position: absolute;
-  bottom: 22px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  color: var(--color-texto);
-}
-
-/* «Mejor» se escribe debajo de la recta y «Peor» arriba: si los dos puntos están cerca, las etiquetas no se pisan */
-.sc-punto-mejor .sc-punto-etiqueta {
-  top: 22px;
-  bottom: auto;
-}
-
-.sc-punto-izq .sc-punto-etiqueta {
-  right: -2px;
-}
-
-.sc-punto-der .sc-punto-etiqueta {
-  left: -2px;
-}
-
-.sc-recta-extremos {
-  display: flex;
-  justify-content: space-between;
+.sc-linea-ec {
   width: 100%;
+  height: 340px;
+}
+
+.sc-linea[data-modo="grafico"] .sc-linea-lista {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.sc-linea:not([data-modo="grafico"]) .sc-linea-ec {
+  display: none;
+}
+
+.sc-linea-lista {
+  display: grid;
+  gap: 0.35rem;
   margin: 0;
-  font-size: 0.75rem;
+  padding: 0 0 0 1.25rem;
+  font-size: 0.9375rem;
   color: var(--color-texto-suave);
 }
 
-.sc-recta-leyenda {
+.sc-linea-peor,
+.sc-linea-mejor {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.sc-linea-leyenda {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1.25rem;
@@ -2612,6 +2977,19 @@ html.lenis body {
 .sc-muestra-sin {
   background-color: transparent;
   border: 2px solid var(--color-sin);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-resultados .tarjeta:hover,
+  .sc-resultados .sc-chip:hover,
+  .sc-resultados .sc-boton:hover,
+  .sc-silo:hover {
+    transform: none;
+  }
+
+  .sc-aguja {
+    transition: none;
+  }
 }
 
 @media print {
@@ -2648,6 +3026,16 @@ html.lenis body {
     --color-k-base: #8a3ffc;
     --color-k-beta: #d02670;
     --color-supuesto: #0072c3;
+    --color-logro: #198038;
+    --color-metal: #e0e0e0;
+    --color-surco: transparent;
+    --color-franja-suave: #525252;
+    --color-trazo: #000000;
+    --color-boca: rgba(0, 0, 0, 0.45);
+    --color-chapa: #ffffff;
+    --color-sobre-logro: #161616;
+    --color-pulso: transparent;
+    --color-pulso-fin: transparent;
   }
 
   html,
@@ -2657,8 +3045,8 @@ html.lenis body {
     padding: 0;
     background: var(--color-fondo) !important;
     color: var(--color-texto);
-    font-size: 10.5pt;
-    line-height: 1.4;
+    font-size: 9.5pt;
+    line-height: 1.3;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -2744,8 +3132,12 @@ html.lenis body {
     transition: none !important;
   }
 
-  /* Silos y medidor lado a lado; la recta de los seis años, a todo lo ancho debajo */
-  .sc-bloque-recta {
+  /* Silos a todo lo ancho; debajo, el medidor y la línea de tiempo lado a lado */
+  .sc-visual {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .sc-bloque-silos {
     grid-column: 1 / -1;
   }
 
@@ -2813,7 +3205,7 @@ html.lenis body {
   }
 
   .mc-tabla {
-    font-size: 9.5pt;
+    font-size: 8.5pt;
   }
 
   /* En papel los números no se tocan: sin subrayado punteado */
@@ -2940,8 +3332,172 @@ html.lenis body {
     font-size: 15pt;
   }
 
-  .sc-recta {
-    height: 4.5rem;
+  .sc-linea-ec {
+    width: 400px;
+    max-width: 100%;
+    height: 230px;
+    overflow: hidden;
+  }
+
+  .sc-silo {
+    padding: 4pt 8pt;
+    background: var(--color-fondo);
+    border: 1px solid var(--color-borde);
+    border-top: 4px solid var(--silo);
+  }
+
+  .sc-silo-chapa {
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    border: 1px solid var(--silo);
+  }
+
+  .sc-silo-anillos line,
+  .sc-silo-nervios line {
+    stroke-opacity: 0.55;
+  }
+
+  .sc-medidor-supera {
+    border: 2px solid var(--color-logro);
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    animation: none;
+  }
+
+  .sc-medidor-ec {
+    width: 250px;
+    height: 115px;
+  }
+
+  .sc-aguja,
+  .sc-seg {
+    transition: none !important;
+  }
+
+  /* Resumen y bloques en papel: sin barra de navegación ni textura, y a pleno ancho */
+  .sc-nav {
+    display: none;
+  }
+
+  .sc-marco {
+    display: block;
+  }
+
+  .sc-cuerpo {
+    gap: 8pt;
+  }
+
+  .sc-bloque-grande {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6pt;
+    align-items: flex-start;
+  }
+
+  .sc-bloque-grande > * {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  .sc-bloque-grande > .sc-historia-torta,
+  .sc-bloque-grande > .sc-historia-cascada {
+    flex: 0 0 calc(50% - 3pt);
+  }
+
+  .sc-bloque-cabecera {
+    padding-bottom: 2pt;
+  }
+
+  .sc-bloque-num {
+    font-size: 18pt;
+  }
+
+  .sc-bloque-titulo {
+    font-size: 16pt;
+  }
+
+  .sc-franja {
+    margin-bottom: 6pt;
+    padding: 6pt 10pt;
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    border: 1px solid var(--color-borde);
+    border-left: 6px solid var(--color-acento);
+    border-bottom-width: 1px;
+  }
+
+  .sc-franja-campana {
+    color: var(--color-texto-suave);
+  }
+
+  .sc-franja-titular {
+    font-size: 14pt;
+  }
+
+  .sc-franja-titular .sc-numero,
+  .sc-franja-titular [data-origen] {
+    color: var(--color-texto);
+  }
+
+  .sc-historia {
+    border-top-width: 3px;
+  }
+
+  .sc-historia-titular {
+    font-size: 10.5pt;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .sc-historia-lectura {
+    font-size: 8.5pt;
+  }
+
+  .sc-historia-escenarios .sc-grafico,
+  .sc-historia-futuro .sc-grafico {
+    width: 690px;
+    height: 200px;
+  }
+
+  .sc-resultados .tarjeta,
+  .sc-resultados .tarjeta:hover {
+    transform: none !important;
+  }
+
+  .sc-historia {
+    break-inside: avoid;
+  }
+
+  /* La tabla de R por escenario repite lo que ya muestra el gráfico de los seis escenarios: en papel queda sólo el gráfico */
+  .sc-detalle-escenarios {
+    display: none;
+  }
+
+  .sc-resultados .sc-numero,
+  .sc-resultados .sc-claves-cuatro .sc-numero {
+    font-size: 17pt;
+  }
+
+  .sc-medidor-numero {
+    font-size: 18pt;
+    margin-top: -4pt;
+  }
+
+
+  .sc-linea-ec {
+    height: 170px;
+  }
+
+  .sc-historia-escenarios .sc-grafico {
+    height: 170px;
+  }
+
+  .sc-historia-futuro .sc-grafico {
+    height: 215px;
+  }
+
+  .sc-bloque-cabecera {
+    margin-top: 4pt;
   }
 
   /* Detalle: los gráficos de a dos por renglón y las tablas a lo ancho; los desplegables se imprimen abiertos y sin su rótulo de botón */
@@ -2980,7 +3536,7 @@ html.lenis body {
   .sc-detalle-escenarios,
   .sc-calendario-res,
   .sc-lectura,
-  .sc-bloque-recta,
+  .sc-bloque-linea,
   .sc-bloque-medidor,
   .sc-bloque-silos {
     break-inside: avoid;
