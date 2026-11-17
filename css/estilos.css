@@ -36,6 +36,10 @@
   --color-franja: #0043ce;           /* franja de resumen de los resultados */
   --color-metal: #353535;            /* chapa vacía de los silos */
   --color-surco: rgba(255, 255, 255, 0.07);       /* surcos finos de la franja */
+  --color-surco-oscuro: rgba(0, 0, 0, 0.34);     /* surcos de la parcela */
+  --color-velo: rgba(22, 22, 22, 0.18);          /* parte cubierta de la parcela */
+  --color-tramado: rgba(255, 255, 255, 0.55);    /* tramado de «precio fijado» */
+  --color-brillo: rgba(255, 255, 255, 0.28);
   --color-franja-suave: rgba(255, 255, 255, 0.85);
   --color-trazo: #000000;            /* anillos y nervios de los silos */
   --color-boca: rgba(0, 0, 0, 0.45);
@@ -1680,6 +1684,34 @@ output {
   min-width: 0;
 }
 
+/* Hectáreas: casillero corto (hasta 5 cifras) con una parcela dibujada al lado; en rojo al instante si el total pasa del tope */
+.sc-campo-entero .sc-campo-fila input {
+  flex: 0 0 auto;
+  width: 7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-parcela-mini {
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
+  color: var(--silo, var(--color-trigo));
+}
+
+.sc-cultivo[data-cultivo="Trigo"] { --silo: var(--color-trigo); }
+.sc-cultivo[data-cultivo="Soja"] { --silo: var(--color-soja); }
+.sc-cultivo[data-cultivo="Maíz"] { --silo: var(--color-maiz); }
+
+.sc-campo[data-excedido="true"] input {
+  color: var(--color-alerta);
+  border-bottom-color: var(--color-alerta);
+  box-shadow: inset 0 0 0 1px var(--color-alerta);
+}
+
+.sc-campo[data-excedido="true"] .sc-parcela-mini,
+.sc-campo[data-excedido="true"] .sc-unidad {
+  color: var(--color-alerta);
+}
+
 .sc-unidad {
   flex: 0 0 auto;
   font-size: 0.85rem;
@@ -1723,6 +1755,45 @@ output {
 
 .sc-chip:hover {
   background-color: var(--color-borde-fuerte);
+}
+
+/* Cultivo: dibujo del cultivo, en su color, sobre una chapita oscura para que se lea elegido o no */
+.sc-chip-cultivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-left: 0.5rem;
+}
+
+.sc-chip-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background-color: var(--color-fondo);
+  color: var(--silo, var(--color-texto));
+}
+
+.sc-chip-icono svg {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+/* «No uso futuros»: recuadro de aviso al instante */
+.sc-aviso-descubierto {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--color-texto);
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-aviso);
+  border-left-width: 4px;
+}
+
+.sc-aviso-descubierto strong {
+  color: var(--color-aviso);
 }
 
 .sc-chip[aria-pressed="true"] {
@@ -2415,16 +2486,17 @@ html.lenis body {
   overflow: clip;
 }
 
-/* Franja de resumen: una frase grande sobre el azul de IBM, con surcos finos de fondo */
+/* Franja de resumen: fondo oscuro con acento azul a la izquierda y el número clave en azul, con surcos finos de fondo */
 .sc-franja {
   display: grid;
   gap: 0.75rem;
   margin: 0 0 1.5rem;
   padding: 1.75rem 1.25rem 2rem;
-  color: var(--color-sobre-acento);
-  background-color: var(--color-franja);
+  color: var(--color-texto);
+  background-color: var(--color-superficie);
   background-image: repeating-linear-gradient(100deg, var(--color-surco) 0, var(--color-surco) 2px, transparent 2px, transparent 20px);
-  border-bottom: 4px solid var(--color-acento-claro);
+  border: 1px solid var(--color-borde);
+  border-left: 6px solid var(--color-acento);
 }
 
 @media (min-width: 760px) {
@@ -2437,7 +2509,7 @@ html.lenis body {
   font-size: 0.8125rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-franja-suave);
+  color: var(--color-acento-claro);
 }
 
 .sc-franja-titular {
@@ -2453,7 +2525,7 @@ html.lenis body {
 .sc-franja-titular [data-origen] {
   font-size: inherit;
   font-weight: 600;
-  color: var(--color-sobre-acento);
+  color: var(--color-acento-claro);
 }
 
 /* Marco: barra de bloques (arriba en el celular, a la izquierda en pantallas anchas) y los tres bloques */
@@ -2761,6 +2833,187 @@ html.lenis body {
   --silo: var(--color-maiz);
 }
 
+/* Silos y parcela, uno junto al otro (en pantallas anchas) */
+.sc-silos-y-parcela {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  justify-items: stretch;
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .sc-silos-y-parcela {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+
+  /* La parcela acompaña a los silos al bajar */
+  .sc-silos-y-parcela .sc-parcela {
+    position: sticky;
+    top: 4.5rem;
+  }
+
+  .sc-silos-y-parcela .sc-parcela-campo {
+    height: 26rem;
+  }
+}
+
+/* Parcela en hectáreas: el campo visto desde arriba */
+.sc-parcela {
+  --surco: 10px;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 1.25rem 1.1rem;
+  background-color: var(--color-superficie-2);
+  border-top: 4px solid var(--color-acento);
+}
+
+.sc-parcela-titulo {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sc-parcela-marco {
+  position: relative;
+}
+
+.sc-parcela-campo {
+  display: flex;
+  gap: 3px;
+  height: 14rem;
+  padding: 3px;
+  background-color: var(--color-fondo);
+  border: 2px solid var(--color-borde-fuerte);
+}
+
+.sc-parcela-franja {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 1.5rem;
+  overflow: hidden;
+  outline-offset: 2px;
+  cursor: help;
+  transition: flex-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Surcos: rayas del color del cultivo, una clara y una oscura */
+  background-color: var(--silo);
+  background-image: repeating-linear-gradient(90deg, var(--color-surco-oscuro) 0, var(--color-surco-oscuro) 3px, var(--color-surco) 3px, var(--color-surco) var(--surco));
+}
+
+.sc-parcela-franja:focus-visible {
+  outline: 2px solid var(--color-foco);
+}
+
+/* La parte cubierta sube desde abajo: tramado y brillo de «precio fijado», con un candado */
+.sc-parcela-cubierta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background-color: var(--color-velo);
+  background-image:
+    linear-gradient(180deg, var(--color-tramado) 0, transparent 38%),
+    repeating-linear-gradient(135deg, var(--color-tramado) 0, var(--color-tramado) 2px, transparent 2px, transparent 8px);
+  border-top: 2px solid var(--color-sobre-acento);
+  box-shadow: 0 -6px 14px var(--color-brillo);
+  overflow: hidden;
+  transition: height 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sc-parcela-franja[data-cubierta="0"] .sc-parcela-cubierta {
+  border-top-width: 0;
+  box-shadow: none;
+}
+
+.sc-parcela-sello {
+  position: absolute;
+  top: 0.35rem;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-sobre-acento);
+  background-color: var(--color-chapa);
+  border: 1px solid var(--color-sobre-acento);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.sc-parcela-sello svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.sc-parcela-tip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 2;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--color-texto);
+  background-color: var(--color-fondo);
+  border: 1px solid var(--color-acento);
+  pointer-events: none;
+}
+
+.sc-parcela-tip[hidden] {
+  display: none;
+}
+
+.sc-parcela-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.sc-parcela-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sc-parcela-item strong {
+  font-weight: 600;
+  color: var(--silo);
+}
+
+.sc-parcela-dato {
+  color: var(--color-texto-suave);
+}
+
+.sc-parcela-punto {
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--silo);
+}
+
+.sc-parcela-pie {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-texto-suave);
+}
+
+.sc-parcela[data-quieto="1"] .sc-parcela-franja,
+.sc-parcela[data-quieto="1"] .sc-parcela-cubierta {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-parcela-franja,
+  .sc-parcela-cubierta {
+    transition: none;
+  }
+}
+
 .sc-silo-caja {
   position: relative;
   width: 180px;
@@ -2842,22 +3095,34 @@ html.lenis body {
   fill: var(--color-borde-fuerte);
 }
 
-.sc-silo-chapa {
-  position: absolute;
-  top: 58%;
-  left: 50%;
-  padding: 0.1rem 0.65rem;
-  background-color: var(--color-chapa);
-  color: var(--color-sobre-acento);
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
+.sc-silo-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* El porcentaje va al costado del silo, no encima, para que se vea el llenado */
+.sc-silo-lado {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  min-width: 4.5rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--silo);
 }
 
 .sc-silo-pct {
   font-family: var(--fuente-titulos);
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 300;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  color: var(--color-texto);
+}
+
+.sc-silo-lado-rotulo {
+  font-size: 0.8125rem;
+  color: var(--color-texto-suave);
 }
 
 .sc-silo-texto {
@@ -3403,10 +3668,19 @@ html.lenis body {
     border-top: 4px solid var(--silo);
   }
 
-  .sc-silo-chapa {
-    background-color: var(--color-fondo);
-    color: var(--color-texto);
-    border: 1px solid var(--silo);
+  .sc-parcela {
+    padding: 4pt 8pt;
+    background: var(--color-fondo);
+    border: 1px solid var(--color-borde);
+  }
+
+  .sc-parcela-campo {
+    height: 8rem;
+  }
+
+  .sc-silos-y-parcela {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 8pt;
   }
 
   .sc-silo-anillos line,
@@ -3480,7 +3754,7 @@ html.lenis body {
     color: var(--color-texto);
     border: 1px solid var(--color-borde);
     border-left: 6px solid var(--color-acento);
-    border-bottom-width: 1px;
+    background-image: none;
   }
 
   .sc-franja-campana {

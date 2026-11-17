@@ -168,19 +168,23 @@
     var ec = el("div", { "class": "sc-silo-ec" });
     var relleno = el("div", { "class": "sc-silo-relleno" });
     var pct = el("span", { "class": "sc-silo-pct" });
-    var caja = el("div", { "class": "sc-silo-caja", role: "img" }, [ec, el("div", { "class": "sc-silo-cuerpo" }, relleno), dibujoSilo(), el("div", { "class": "sc-silo-chapa" }, pct)]);
+    var caja = el("div", { "class": "sc-silo-caja", role: "img" }, [ec, el("div", { "class": "sc-silo-cuerpo" }, relleno), dibujoSilo()]);
+    // El porcentaje va al costado del silo (no encima) para que se vea el llenado del líquido.
+    var lado = el("div", { "class": "sc-silo-lado" }, [pct, el("span", { "class": "sc-silo-lado-rotulo" }, "cubierto")]);
     var texto = el("figcaption", { "class": "sc-silo-texto" });
-    var nodo = el("figure", { "class": "sc-silo sc-cultivo-" + cultivo.toLowerCase().replace("í", "i"), "data-cultivo": cultivo }, [caja, texto]);
-    return { nodo: nodo, caja: caja, ec: ec, relleno: relleno, pct: pct, texto: texto, chart: null, listo: false, cultivo: cultivo };
+    var nodo = el("figure", { "class": "sc-silo sc-cultivo-" + cultivo.toLowerCase().replace("í", "i"), "data-cultivo": cultivo },
+      [el("div", { "class": "sc-silo-fila" }, [caja, lado]), texto]);
+    return { nodo: nodo, caja: caja, ec: ec, relleno: relleno, pct: pct, texto: texto, chart: null, listo: false, visto: false, esperando: false, pendiente: null, cultivo: cultivo };
   }
 
-  function opcionSilo(d, c, anim) {
-    var dur = anim ? 1100 : 0;
+  function opcionSilo(d, c, anim, h) {
+    var dur = anim ? 1800 : 0;
+    var nivel = h === undefined ? d.h : h;
     return {
-      animation: anim, animationDuration: dur, animationDurationUpdate: dur, animationEasing: "cubicOut", animationEasingUpdate: "cubicOut",
+      animation: anim, animationDuration: dur, animationDurationUpdate: dur, animationEasing: "cubicOut", animationEasingUpdate: "cubicInOut",
       series: [{
-        type: "liquidFill", data: d.h > 0 ? [d.h, d.h * 0.9] : [0], shape: FORMA_SILO, radius: "96%", center: ["50%", "50%"],
-        color: [d.color, d.color], amplitude: anim ? 4 : 0, waveLength: "100%", period: function (v, i) { return i ? 5200 : 3600; },
+        type: "liquidFill", data: nivel > 0 ? [nivel, nivel * 0.92] : [0], shape: FORMA_SILO, radius: "96%", center: ["50%", "50%"],
+        color: [d.color, d.color], amplitude: anim ? 3 : 0, waveLength: "90%", period: function (v, i) { return i ? 6400 : 4600; },
         waveAnimation: anim, direction: "right", phase: 0, animationDuration: dur, animationDurationUpdate: dur,
         backgroundStyle: { color: c.metal, borderWidth: 0 },
         outline: { show: false },
@@ -190,13 +194,28 @@
     };
   }
 
-  // Dibuja o actualiza un silo: la primera vez arma el gráfico; después sólo cambia el valor y ECharts anima la subida con su ola.
+  // Sube el líquido (y la barra de respaldo) hasta el nivel pedido; con movimiento, ECharts lo anima con su ola.
+  function subirSilo(silo, d) {
+    silo.relleno.setAttribute("style", "height:" + Math.round(d.h * 100) + "%");
+    try {
+      if (silo.chart) silo.chart.setOption({ series: [{ data: d.h > 0 ? [d.h, d.h * 0.92] : [0], color: [d.color, d.color] }] });
+    } catch (e) { silo.ec.setAttribute("data-error", String(e && e.message ? e.message : e)); }
+  }
+
+  // Dibuja o actualiza un silo. Con movimiento, el primer dibujo arranca vacío y el líquido sube desde 0 cuando el silo entra en pantalla;
+  // después, cada cambio de cobertura sólo mueve el nivel. Sin movimiento (o al imprimir) se dibuja de una vez, quieto.
   function pintarSilo(silo, d, c) {
     var anim = !sinMovimiento();
+    var esperar = anim && conVigia() && !silo.visto;
     silo.caja.setAttribute("aria-label", "Silo de " + d.cultivo.toLowerCase() + ": " + d.etiqueta);
-    silo.relleno.setAttribute("style", "height:" + Math.round(d.h * 100) + "%");
+    silo.relleno.setAttribute("style", "height:" + (esperar ? 0 : Math.round(d.h * 100)) + "%");
     silo.pct.textContent = d.pctTexto || "";
+    silo.pendiente = d;
     var E = raiz.echarts;
+    if (esperar && !silo.esperando) {
+      silo.esperando = true;
+      cuandoSeVea(silo.nodo, function () { silo.visto = true; silo.esperando = false; subirSilo(silo, silo.pendiente); });
+    }
     if (!E || typeof E.init !== "function") return;
     try {
       if (!silo.chart) {
@@ -204,15 +223,15 @@
         silo.listo = false;
       }
       if (!silo.listo || imprimiendo || !anim) {
-        silo.chart.setOption(opcionSilo(d, c, anim), true);
+        silo.chart.setOption(opcionSilo(d, c, anim, esperar ? 0 : d.h), true);
         // Si liquidfill no está cargado, ECharts descarta la serie: se queda la barra CSS.
         var cargado = silo.chart.getModel && silo.chart.getModel().getSeries().length > 0;
         silo.ec.setAttribute("data-liquido", cargado ? "1" : "0");
         silo.caja.setAttribute("data-modo", cargado ? "liquido" : "barra");
         silo.listo = cargado;
         if (imprimiendo && cargado && typeof silo.chart.getZr === "function") silo.chart.getZr().refreshImmediately();
-      } else {
-        silo.chart.setOption({ series: [{ data: d.h > 0 ? [d.h, d.h * 0.9] : [0], color: [d.color, d.color] }] });
+      } else if (!esperar) {
+        silo.chart.setOption({ series: [{ data: d.h > 0 ? [d.h, d.h * 0.92] : [0], color: [d.color, d.color] }] });
       }
     } catch (e) {
       silo.ec.setAttribute("data-error", String(e && e.message ? e.message : e));
@@ -223,6 +242,144 @@
   function liberarSilo(silo) {
     try { if (silo.chart) silo.chart.dispose(); } catch (e) { /* ya liberado */ }
     silo.chart = null;
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Íconos de los cultivos: espiga (trigo), chaucha (soja) y choclo (maíz), en SVG propio; toman el color del texto (currentColor)
+  // ---------------------------------------------------------------------------------------
+
+  function iconoCultivo(cultivo) {
+    var d = svg("svg", { "class": "sc-icono sc-icono-" + String(cultivo).toLowerCase().replace("í", "i"), viewBox: "0 0 24 24", width: "24", height: "24", "aria-hidden": "true", focusable: "false" });
+    var f = function (dd, extra) { var a = { d: dd, fill: "currentColor" }; Object.keys(extra || {}).forEach(function (k) { a[k] = extra[k]; }); d.appendChild(svg("path", a)); };
+    var l = function (dd, ancho) { d.appendChild(svg("path", { d: dd, fill: "none", stroke: "currentColor", "stroke-width": String(ancho || 1.6), "stroke-linecap": "round", "stroke-linejoin": "round" })); };
+    if (cultivo === "Trigo") {
+      // Espiga: tallo, granos en pares y un grano en la punta
+      l("M12 22V8");
+      f("M12 1.6C10.6 3.2 10.6 5.4 12 7.2C13.4 5.4 13.4 3.2 12 1.6Z");
+      [9, 14].forEach(function (y) {
+        f("M12 " + (y + 2) + "C8.6 " + (y + 2) + " 7 " + (y - 0.5) + " 6.6 " + (y - 3.2) + "C10 " + (y - 3.2) + " 12 " + (y - 0.8) + " 12 " + (y + 2) + "Z");
+        f("M12 " + (y + 2) + "C15.4 " + (y + 2) + " 17 " + (y - 0.5) + " 17.4 " + (y - 3.2) + "C14 " + (y - 3.2) + " 12 " + (y - 0.8) + " 12 " + (y + 2) + "Z");
+      });
+      f("M12 18.5C8.6 18.5 7 16 6.6 13.5C10 13.5 12 15.8 12 18.5Z");
+      f("M12 18.5C15.4 18.5 17 16 17.4 13.5C14 13.5 12 15.8 12 18.5Z");
+    } else if (cultivo === "Soja") {
+      // Chaucha: vaina curva con tres porotos
+      l("M4.5 19.5C2.8 11.5 9 4 19.5 4.2C19.8 12.8 13 20.6 4.5 19.5Z", 1.7);
+      [[8.6, 14.6], [12.2, 11.4], [15.6, 8.2]].forEach(function (c) { d.appendChild(svg("circle", { cx: String(c[0]), cy: String(c[1]), r: "1.8", fill: "currentColor" })); });
+      l("M19.5 4.2C20.6 3.4 21.4 3 22 2.8", 1.5);
+    } else {
+      // Choclo: la mazorca con sus granos y dos hojas de chala
+      f("M12 2C8.6 2 7.6 6.6 7.6 11C7.6 15 9.4 18.5 12 18.5C14.6 18.5 16.4 15 16.4 11C16.4 6.6 15.4 2 12 2Z");
+      d.appendChild(svg("path", { d: "M12 3V17M9.4 6.5H14.6M8.6 10H15.4M8.8 13.5H15.2", fill: "none", stroke: "#262626", "stroke-width": "0.9", "stroke-linecap": "round" }));
+      f("M12 22.2C6.2 21.4 4.4 15.4 5.8 10.4C8.6 12.6 11.2 16 12 22.2Z", { "fill-opacity": "0.78" });
+      f("M12 22.2C17.8 21.4 19.6 15.4 18.2 10.4C15.4 12.6 12.8 16 12 22.2Z", { "fill-opacity": "0.78" });
+    }
+    return d;
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Parcela en hectáreas: el campo visto desde arriba. Una franja por cultivo, tan ancha como sus hectáreas, con surcos del color del
+  // cultivo; la parte cubierta con futuros sube desde abajo con un tramado de «precio fijado» y un candado. Reutilizable en otras pestañas.
+  // ---------------------------------------------------------------------------------------
+
+  // Dibujito de una parcela con surcos, para el casillero de hectáreas.
+  function dibujoParcelaChica() {
+    var d = svg("svg", { "class": "sc-parcela-mini", viewBox: "0 0 40 28", width: "40", height: "28", "aria-hidden": "true", focusable: "false" });
+    d.appendChild(svg("path", { "class": "sc-parcela-mini-suelo", d: "M6 3H34L38 25H2Z", fill: "currentColor", "fill-opacity": "0.18", stroke: "currentColor", "stroke-width": "1.2", "stroke-linejoin": "round" }));
+    [[11, 3, 9, 25], [16, 3, 15, 25], [21, 3, 21, 25], [26, 3, 27, 25], [31, 3, 33, 25]].forEach(function (l) {
+      d.appendChild(svg("path", { d: "M" + l[0] + " " + l[1] + "L" + l[2] + " " + l[3], stroke: "currentColor", "stroke-width": "1.3", "stroke-linecap": "round", fill: "none" }));
+    });
+    return d;
+  }
+
+  function candado() {
+    var d = svg("svg", { "class": "sc-parcela-candado", viewBox: "0 0 16 16", width: "14", height: "14", "aria-hidden": "true", focusable: "false" });
+    d.appendChild(svg("path", { d: "M5 7V5a3 3 0 0 1 6 0v2", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round" }));
+    d.appendChild(svg("rect", { x: "3", y: "7", width: "10", height: "7", rx: "1.4", fill: "currentColor" }));
+    return d;
+  }
+
+  function entero(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+  // Texto de la franja (tooltip y lectores de pantalla): hectáreas, y si se pasan, toneladas y USD de la parte con precio fijado.
+  function textoFranja(c, ha, h, extra) {
+    var partes = [c + ": " + entero(ha) + " ha", Math.round(h * 100) + " % con precio fijado"];
+    if (extra && typeof extra.toneladas === "number") partes.push(entero(extra.toneladas) + (typeof extra.producidas === "number" ? " t fijadas de " + entero(extra.producidas) : " t fijadas"));
+    if (extra && typeof extra.usd === "number") partes.push(entero(extra.usd) + " USD fijados");
+    return partes.join(" · ");
+  }
+
+  // datos: { cultivos: ["Soja", ...], hectareas: { Soja: 300 }, h: { Soja: 0.5 }, toneladas?: { c: t cubiertas }, producidas?: { c: t }, usd?: { c: USD fijados } }
+  // Devuelve { nodo, actualizar(datos) }: llamar a actualizar cuando cambie la cobertura (la transición es animada, salvo «menos movimiento»).
+  function crearParcela(datos) {
+    var campo = el("div", { "class": "sc-parcela-campo" });
+    var leyenda = el("ul", { "class": "sc-parcela-leyenda" });
+    var tip = el("div", { "class": "sc-parcela-tip", role: "status" });
+    tip.hidden = true;
+    var nodo = el("figure", { "class": "sc-parcela", role: "img" }, [
+      el("figcaption", { "class": "sc-parcela-titulo" }, "Tu campo visto desde arriba"),
+      el("div", { "class": "sc-parcela-marco" }, [campo, tip]), leyenda,
+      el("p", { "class": "sc-parcela-pie" }, "Cada franja es un cultivo, tan ancha como sus hectáreas. Lo rayado y con candado es lo que ya tiene precio fijado.")
+    ]);
+    var p = { nodo: nodo, campo: campo, leyenda: leyenda, tip: tip, clave: "", franjas: {}, items: {}, visto: false, esperando: false, pendiente: null };
+
+    function extraDe(d, c) { return { toneladas: d.toneladas && d.toneladas[c], producidas: d.producidas && d.producidas[c], usd: d.usd && d.usd[c] }; }
+    function mostrar(c) {
+      var d = p.pendiente || datos;
+      tip.textContent = textoFranja(c, d.hectareas[c] || 0, d.h[c] || 0, extraDe(d, c));
+      tip.hidden = false;
+      tip.setAttribute("data-cultivo", c);
+    }
+    function ocultar() { tip.hidden = true; }
+
+    function armar(d) {
+      base().vaciar(campo); base().vaciar(leyenda);
+      p.franjas = {}; p.items = {};
+      d.cultivos.forEach(function (c) {
+        var cls = "sc-cultivo-" + c.toLowerCase().replace("í", "i");
+        var cubierta = el("div", { "class": "sc-parcela-cubierta" }, [el("span", { "class": "sc-parcela-sello" }, [candado()])]);
+        var f = el("div", { "class": "sc-parcela-franja " + cls, "data-cultivo": c, tabindex: "0" }, [cubierta]);
+        f.addEventListener("mouseenter", function () { mostrar(c); });
+        f.addEventListener("focus", function () { mostrar(c); });
+        f.addEventListener("mouseleave", ocultar);
+        f.addEventListener("blur", ocultar);
+        campo.appendChild(f);
+        var dato = el("span", { "class": "sc-parcela-dato" });
+        var item = el("li", { "class": "sc-parcela-item " + cls, "data-cultivo": c }, [el("span", { "class": "sc-parcela-punto" }), el("strong", null, c), dato]);
+        leyenda.appendChild(item);
+        p.franjas[c] = { franja: f, cubierta: cubierta };
+        p.items[c] = dato;
+      });
+    }
+
+    function pintar(d, conCobertura) {
+      d.cultivos.forEach(function (c) {
+        var fr = p.franjas[c], ha = d.hectareas[c] || 0, h = d.h[c] || 0;
+        fr.franja.setAttribute("style", "flex:" + Math.max(ha, 1) + " 1 0");
+        fr.franja.setAttribute("data-ha", String(ha));
+        fr.franja.setAttribute("data-h", String(h));
+        fr.franja.setAttribute("data-cubierta", h > 0 ? "1" : "0");
+        fr.cubierta.setAttribute("style", "height:" + (conCobertura ? Math.round(h * 100) : 0) + "%");
+        p.items[c].textContent = entero(ha) + " ha · " + Math.round(h * 100) + " % fijado";
+      });
+    }
+
+    p.actualizar = function (d) {
+      var clave = d.cultivos.join("|");
+      if (clave !== p.clave) { armar(d); p.clave = clave; p.visto = false; }
+      p.pendiente = d;
+      nodo.setAttribute("data-quieto", sinMovimiento() ? "1" : "0");
+      var esperar = !sinMovimiento() && conVigia() && !p.visto;
+      pintar(d, !esperar);
+      var total = d.cultivos.reduce(function (s, c) { return s + (d.hectareas[c] || 0); }, 0);
+      nodo.setAttribute("aria-label", "Parcela de " + entero(total) + " hectáreas. " + d.cultivos.map(function (c) { return textoFranja(c, d.hectareas[c] || 0, d.h[c] || 0, extraDe(d, c)); }).join(". "));
+      if (esperar && !p.esperando) {
+        p.esperando = true;
+        cuandoSeVea(nodo, function () { p.visto = true; p.esperando = false; pintar(p.pendiente, true); });
+      }
+    };
+    if (datos) p.actualizar(datos);
+    return p;
   }
 
   // ---------------------------------------------------------------------------------------
@@ -460,7 +617,11 @@
 
   function crearPanel() {
     var silos = bloque("sc-bloque-silos", "Cuánto de tu cosecha ya tiene precio");
-    silos.cuerpo.setAttribute("class", "sc-visual-cuerpo sc-silos");
+    silos.cuerpo.setAttribute("class", "sc-visual-cuerpo sc-silos-y-parcela");
+    var cuerpoSilos = el("div", { "class": "sc-silos" });
+    var parcela = crearParcela(null);
+    silos.cuerpo.appendChild(cuerpoSilos);
+    silos.cuerpo.appendChild(parcela.nodo);
     var medidor = bloque("sc-bloque-medidor", "Riesgo que sacás");
     var m = crearMedidor();
     medidor.cuerpo.appendChild(m.nodo);
@@ -469,7 +630,7 @@
     [r.leyenda, r.nodo].forEach(function (n) { linea.cuerpo.appendChild(n); });
     var nodo = el("div", { "class": "sc-visual", id: "sc-visual" }, [silos.nodo, medidor.nodo, linea.nodo]);
     return { nodo: nodo, silos: [], medidor: m, linea: r, frases: { silos: silos.frase, medidor: medidor.frase, linea: linea.frase },
-      cuerpoSilos: silos.cuerpo, clave: "", entradasListas: false };
+      cuerpoSilos: cuerpoSilos, parcela: parcela, clave: "", entradasListas: false };
   }
 
   // datos: { colores: { metal }, silos: [{ cultivo, h, color, etiqueta, pctTexto, toneladasTexto }], medidor: { valor, umbral, textoMarca, aria }, linea: {...} }
@@ -492,6 +653,7 @@
       silo.texto.appendChild(raiz.document.createTextNode(" · " + s.toneladasTexto));
       pintarSilo(silo, s, datos.colores);
     });
+    if (datos.parcela) panel.parcela.actualizar(datos.parcela);
     pintarMedidor(panel.medidor, datos.medidor.valor, datos.medidor.umbral, datos.medidor.textoMarca, datos.medidor.aria, datos.medidor.colores);
     pintarLinea(panel.linea, datos.linea);
     if (!panel.entradasListas) {
@@ -514,7 +676,7 @@
   raiz.TESIS_VISUAL = {
     sinMovimiento: sinMovimiento, fijarImpresion: fijarImpresion, terminar: terminar,
     entrada: entrada, espiar: espiar, contar: contar, scrollSuave: scrollSuave,
-    crearPanel: crearPanel, actualizarPanel: actualizarPanel, redimensionarPanel: redimensionarPanel,
+    crearPanel: crearPanel, crearParcela: crearParcela, iconoCultivo: iconoCultivo, dibujoParcelaChica: dibujoParcelaChica, actualizarPanel: actualizarPanel, redimensionarPanel: redimensionarPanel,
     FORMA_SILO: FORMA_SILO, SEGMENTOS: SEGMENTOS
   };
   if (!raiz.TESIS_APP) throw new Error("campana-visual.js tiene que cargarse después de app.js");

@@ -38,7 +38,7 @@
     var acum = {};
     datos.geojson.features.forEach(function (f) {
       var z = f.properties.z;
-      if (!z) return;
+      if (!z || !f.properties.r) return;
       var polis = f.geometry.coordinates, mejor = polis[0][0];
       polis.forEach(function (p) { if (p[0].length > mejor.length) mejor = p[0]; });
       var sx = 0, sy = 0;
@@ -85,6 +85,7 @@
       if (!z) return "<strong>" + escapar(partido[0]) + "</strong><br>" + escapar(partido[1] || "") + "<br>Fuera de las 8 zonas de la tesis";
       var d = opc.detalle(z);
       var t = "<strong>" + escapar(z) + "</strong><br>" + escapar(d.provincia || partido[1] || "");
+      if (ind.zonaDe[params.name]) t = "<strong>" + escapar(partido[0]) + "</strong> · " + escapar(z) + " (aproximada)<br>" + escapar(partido[1] || "");
       if (d.partidos && d.partidos.length) t += "<br>Partidos de referencia: " + escapar(d.partidos.join(", "));
       return t;
     }
@@ -99,11 +100,12 @@
       var regiones = datos.geojson.features.map(function (f) {
         var nombre = clave(f.properties), z = ind.zonaDe[nombre];
         if (!z) return { name: nombre, itemStyle: { areaColor: "#3a3a3a", borderColor: "#2a2a2a", borderWidth: 0.5, cursor: "default" }, emphasis: { disabled: true } };
-        var c = colorDeZona(z), sel = z === elegida;
+        // Toda la región con el color de su zona y sin bordes internos fuertes; los partidos de referencia, más intensos.
+        var c = colorDeZona(z), sel = z === elegida, ref = !!f.properties.r;
         return {
           name: nombre,
-          itemStyle: { areaColor: c, opacity: sel ? 1 : 0.65, borderColor: sel ? "#ffffff" : "#2a2a2a", borderWidth: sel ? 1.8 : 0.6, shadowBlur: sel ? 14 : 0, shadowColor: c, cursor: "pointer" },
-          emphasis: { itemStyle: { areaColor: c, opacity: 1, borderColor: "#ffffff", borderWidth: 1.8, shadowBlur: 12, shadowColor: c } }
+          itemStyle: { areaColor: c, opacity: sel ? (ref ? 1 : 0.85) : (ref ? 0.75 : 0.4), borderColor: c, borderWidth: 0.4, shadowBlur: sel ? 12 : 0, shadowColor: c, cursor: "pointer" },
+          emphasis: { itemStyle: { areaColor: c, opacity: ref ? 1 : 0.85, borderColor: c, borderWidth: 0.4, shadowBlur: 10, shadowColor: c } }
         };
       });
       var puntos = opc.zonas.filter(function (z) { return cen[z]; }).map(function (z) {

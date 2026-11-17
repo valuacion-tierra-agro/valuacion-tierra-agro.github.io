@@ -1031,6 +1031,9 @@
   // Secciones y arranque (D-03).
   // ---------------------------------------------------------------------------------------
 
+  // Secciones que ya no se muestran en el menú de «Lo que pasó» (su código sigue en el repo): no se registran.
+  app.seccionesFueraDelMenu = ["escenario", "rentabilidad"];
+
   function registrarSeccion(seccion) {
     if (seccion === null || typeof seccion !== "object") {
       throw new Error("registrarSeccion: falta la sección ({ id, titulo, montar, actualizar })");
@@ -1045,6 +1048,7 @@
         throw new Error("registrarSeccion: a la sección «" + seccion.id + "» le falta la función «" + campo + "»");
       }
     });
+    if (app.seccionesFueraDelMenu.indexOf(seccion.id) >= 0) return;
     app.secciones.forEach(function (s) {
       if (s.id === seccion.id) throw new Error("registrarSeccion: ya hay una sección con el id «" + seccion.id + "»");
     });

@@ -1,0 +1,61 @@
+/* «Lo que pasó» › «Probá variantes»: zona fija, aviso del tope de hectáreas, invitación a cargar la campaña y parcela. */
+.mc-zona-fija {
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-left: 3px solid var(--color-acento);
+  font-weight: 600;
+}
+
+.mc-rotulo {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario, var(--color-texto));
+}
+
+.mc-tope {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-alerta);
+  border-left-width: 4px;
+  color: var(--color-alerta);
+  font-weight: 600;
+}
+
+.mc-tope[hidden],
+.mc-invitacion[hidden],
+.mc-cuerpo[hidden],
+.mc-parcela[hidden] {
+  display: none;
+}
+
+.mc-invitacion {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+}
+
+.mc-invitacion p {
+  margin: 0;
+}
+
+.mc-invitacion .boton {
+  display: inline-block;
+  padding: 0.7rem 1.25rem;
+  background: var(--color-acento);
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.mc-derecha {
+  min-width: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.mc-parcela {
+  min-width: 0;
+}

@@ -1,4 +1,5 @@
-// Sección «Mi campo»: el usuario elige zona y hectáreas por cultivo y ve, por campaña, el
+// Sección «Probá variantes» (antes «Mi campo»): la zona es la que cargó el productor en el asistente (fija, sólo se muestra);
+// arranca con sus hectáreas y su cobertura, que puede cambiar (hasta 1.000 ha en total), y ve, por campaña, el
 // margen proyectado, el real sin cobertura y el real con cobertura de su mezcla.
 // Todas las cuentas las hace TESIS_MOTOR.mezcla: acá no se repite ninguna cuenta de márgenes.
 // Script clásico: anda con <script src> (doble clic, file://) y con require en Node (pruebas).
@@ -62,7 +63,10 @@
   ];
 
   var MENSAJE_SIN_HECTAREAS = "Cargá hectáreas en al menos un cultivo para ver los resultados.";
-  var MENSAJE_HECTAREAS = "Poné un número entero entre 0 y 100.000";
+  var HECTAREAS_TOPE = 1000; // tope entre todos los cultivos (el mismo del asistente)
+  var MENSAJE_HECTAREAS = "Poné un número entero entre 0 y 1.000";
+  var MENSAJE_TOPE = "Pasaste el tope: son más de 1.000 ha entre todos los cultivos. Bajá alguna para ver los resultados.";
+  var MENSAJE_INVITACION = "Para probar variantes primero cargá tu campaña: zona, cultivos y hectáreas.";
 
   // Los tres márgenes de la tabla: clave de la celda, texto, campo del Excel y del motor.
   var MARGENES = [
@@ -513,16 +517,30 @@
     var datos = raiz.TESIS_DATOS;
     nodos = { cultivosMontados: null, entradas: {}, avisos: {} };
 
-    contenedor.appendChild(el("p", { "class": "mc-intro" },
-      "Elegí la zona y cuántas hectáreas sembrás de cada cultivo. Vas a ver qué habría pasado en cada campaña, de 2020/21 a 2025/26."));
+    nodos.invitacion = el("div", { id: "mc-invitacion", "class": "mc-invitacion tarjeta" }, [
+      el("p", null, MENSAJE_INVITACION),
+      el("a", { href: "#campana", "class": "boton" }, "Cargar mi campaña")
+    ]);
+    nodos.invitacion.hidden = true;
+    contenedor.appendChild(nodos.invitacion);
+    nodos.cuerpo = el("div", { "class": "mc-cuerpo" });
+    contenedor.appendChild(nodos.cuerpo);
+    // Al salir del asistente hay que partir de la campaña: se vuelve a calcular cuando cambia la dirección.
+    if (typeof raiz.addEventListener === "function") {
+      raiz.addEventListener("hashchange", function () { if (base().estado) actualizar(base().estado); });
+    }
 
-    var selectZona = el("select", { id: "mc-zona" },
-      a.zonasDisponibles(datos).map(function (zona) { return el("option", { value: zona }, zona); }));
-    selectZona.addEventListener("change", function () { a.cambiar({ zona: selectZona.value }); });
-    nodos.zona = selectZona;
+    nodos.cuerpo.appendChild(el("p", { "class": "mc-intro" },
+      "Partís de tu campaña: tu zona, tus hectáreas y tu cobertura. Cambiá las hectáreas de cada cultivo o la parte cubierta y vas a ver qué habría pasado en cada campaña, de 2020/21 a 2025/26."));
+
+    // La zona no se elige acá: es la que cargó el productor en el asistente.
+    nodos.zona = el("p", { id: "mc-zona", "class": "mc-zona-fija" });
 
     nodos.hectareas = el("fieldset", null, el("legend", null, "Hectáreas por cultivo"));
     nodos.resultados = el("div", { id: "mc-resultados", "class": "mc-resultados" });
+    nodos.tope = el("p", { id: "mc-tope", "class": "mc-tope", role: "alert" }, MENSAJE_TOPE);
+    nodos.tope.hidden = true;
+    nodos.parcela = el("div", { id: "mc-parcela", "class": "mc-parcela" });
 
     // Proporción cubierta con futuros: de 0 a 100 % de a 5.
     nodos.h = el("input", { type: "range", id: "mc-h", min: "0", max: "100", step: "5" });
@@ -536,17 +554,18 @@
     nodos.unidad.addEventListener("change", function () { a.cambiar({ unidad: nodos.unidad.value }); });
 
     var entradas = el("div", { "class": "mc-entradas tarjeta" }, [
-      el("label", { "for": "mc-zona" }, "Zona"),
-      selectZona,
+      el("span", { "class": "mc-rotulo" }, "Zona (la de tu campaña)"),
+      nodos.zona,
       nodos.hectareas,
-      el("p", { "class": "ayuda" }, "Números enteros de 0 a 100.000."),
+      el("p", { "class": "ayuda" }, "Números enteros; entre todos los cultivos, hasta 1.000 ha."),
+      nodos.tope,
       el("label", { "for": "mc-h" }, "Parte cubierta con futuros"),
       el("div", { "class": "mc-campo-entrada" }, [nodos.h, nodos.hValor]),
       el("label", { "for": "mc-unidad" }, "Mostrar en"),
       nodos.unidad
     ]);
-    contenedor.appendChild(el("div", { "class": "mc-disposicion" }, [entradas, nodos.resultados]));
-    contenedor.appendChild(glosario());
+    nodos.cuerpo.appendChild(el("div", { "class": "mc-disposicion" }, [entradas, el("div", { "class": "mc-derecha" }, [nodos.parcela, nodos.resultados])]));
+    nodos.cuerpo.appendChild(glosario());
   }
 
   // Glosario al pie de la sección (D-16): qué quiere decir cada sigla y cada término de la tabla.
@@ -710,7 +729,7 @@
   function pintarGrafico(vista) {
     var a = base();
     var el = a.el;
-    var svg = raiz.TESIS_GRAFICOS.barrasAgrupadas(raiz.document, Object.assign({ formatear: a.formato.usd }, vista.grafico));
+    var svg = raiz.TESIS_GRAFICOS.barrasAgrupadas(raiz.document, Object.assign({ formatear: a.formato.usd, rotularCategoria: function (c) { return String(c).replace(/^20(\d\d)\/(\d\d)$/, "$1/$2"); } }, vista.grafico));
     var leyenda = el("ul", { "class": "leyenda" }, vista.grafico.series.map(function (serie) {
       return el("li", null, [el("span", { "class": "muestra-serie " + serie.clase, "aria-hidden": "true" }), serie.nombre]);
     }));
@@ -794,12 +813,90 @@
     nodos.resultados.appendChild(a.el("p", { "class": "mc-mensaje", role: "alert" }, "No se pudo calcular: " + error.message));
   }
 
+  // La campaña que cargó el productor en el asistente: zona, hectáreas por cultivo y cobertura. null si todavía no cargó nada.
+  // La cobertura de cada cultivo se lee de lo que cargó; la mezcla usa una sola proporción: si todos los cultivos tienen la
+  // misma, esa; si no, el promedio ponderado por hectáreas (de a 5 %).
+  function campanaCargada() {
+    var ui = raiz.TESIS_CAMPANA_UI;
+    if (!ui || typeof ui.vista !== "function" || typeof ui.contexto !== "function") return null;
+    var v = ui.vista(), c = ui.contexto();
+    if (!v || !c || !v.cultivos || !v.nombres || !c.zona) return null;
+    if (base().zonasDisponibles(raiz.TESIS_DATOS).indexOf(c.zona) < 0) return null;
+    var hectareas = {}, total = 0, pesada = 0, hp = c.h !== null && typeof c.h === "object" ? c.h : null;
+    var distintas = false, primera = null;
+    v.nombres.forEach(function (n) {
+      var ha = Number(v.cultivos[n] && v.cultivos[n].ha);
+      hectareas[n] = isFinite(ha) && ha > 0 ? Math.round(ha) : 0;
+      var x = hp && typeof hp[n] === "number" ? hp[n] : (typeof c.h === "number" ? c.h : 0);
+      if (primera === null) primera = x; else if (x !== primera) distintas = true;
+      total += hectareas[n];
+      pesada += hectareas[n] * x;
+    });
+    var h = distintas && total > 0 ? pesada / total : (primera || 0);
+    h = Math.round(Math.min(1, Math.max(0, h)) * 20) / 20;
+    return { zona: c.zona, hectareas: hectareas, h: h };
+  }
+
+  // Parcela: el campo en hectáreas, con franjas por cultivo y la parte cubierta marcada. La dibuja campana-visual.js;
+  // si esa función no está, no se muestra nada.
+  function pintarParcela(zona, hectareas, h) {
+    var V = raiz.TESIS_VISUAL;
+    if (!V || typeof V.crearParcela !== "function") return; // sin la función no se muestra nada
+    try {
+      var cultivos = Object.keys(hectareas).filter(function (c) { return hectareas[c] > 0; });
+      nodos.parcela.hidden = cultivos.length === 0;
+      if (!cultivos.length) return;
+      var hp = {};
+      cultivos.forEach(function (c) { hp[c] = h; });
+      var datosParcela = { cultivos: cultivos, hectareas: hectareas, h: hp };
+      if (!nodos.parcelaVisual) {
+        nodos.parcelaVisual = V.crearParcela(datosParcela);
+        nodos.parcela.appendChild(nodos.parcelaVisual.nodo);
+      } else {
+        nodos.parcelaVisual.actualizar(datosParcela);
+      }
+    } catch (e) {
+      base().vaciar(nodos.parcela);
+      nodos.parcelaVisual = null;
+    }
+  }
+
+  // Mientras la persona está en el asistente («Simulá tu campaña») esta sección no toca el estado compartido:
+  // parte de la campaña cuando sale de ahí.
+  function enElAsistente() {
+    var hash = raiz.location && typeof raiz.location.hash === "string" ? raiz.location.hash : "";
+    return hash === "" || hash === "#" || hash.indexOf("#campana") === 0;
+  }
+
   function actualizar(estado) {
     var a = base();
     try {
-      var vista = armarVista(raiz.TESIS_DATOS, estado);
+      if (enElAsistente()) return;
+      var cargada = campanaCargada();
+      nodos.invitacion.hidden = !!cargada;
+      nodos.cuerpo.hidden = !cargada;
+      if (!cargada) { a.vaciar(nodos.resultados); a.vaciar(nodos.parcela); nodos.semilla = null; return; }
+      // Una campaña nueva en el asistente: la zona, las hectáreas y la cobertura de acá parten de lo que cargó.
+      var clave = JSON.stringify(cargada);
+      if (nodos.semilla !== clave) {
+        nodos.semilla = clave;
+        a.cambiar({ zona: cargada.zona, hectareas: cargada.hectareas, h: cargada.h });
+        return;
+      }
+      var e = a.normalizarEstado(estado, raiz.TESIS_DATOS, 0);
+      if (e.zona !== cargada.zona) {
+        a.cambiar({ zona: cargada.zona });
+        return;
+      }
+      var cultivos = raiz.TESIS_MOTOR.cultivosDe(raiz.TESIS_DATOS, e.zona);
+      var total = suma(cultivos.map(function (c) { return e.hectareas[c]; }));
+      var pasado = total > HECTAREAS_TOPE;
+      nodos.tope.hidden = !pasado;
+      var vista = pasado
+        ? { zona: e.zona, cultivos: cultivos, hectareas: e.hectareas, h: e.h, unidad: e.unidad, mensaje: MENSAJE_TOPE }
+        : armarVista(raiz.TESIS_DATOS, estado);
       armarEntradas(vista);
-      nodos.zona.value = vista.zona;
+      nodos.zona.textContent = vista.zona;
       // Deslizador y unidad se sincronizan sin rehacer las entradas (no se pierde el foco al escribir).
       nodos.h.value = String(Math.round(vista.h * 100));
       nodos.hValor.textContent = a.formato.numero(vista.h * 100, 0) + NBSP + "%";
@@ -810,24 +907,27 @@
         if (a.formato.leerEntero(entrada.value) !== vista.hectareas[cultivo]) entrada.value = a.formato.entero(vista.hectareas[cultivo]);
         marcarEntrada(cultivo);
       });
+      pintarParcela(vista.zona, vista.hectareas, vista.h);
       // Se recuerda el scroll horizontal de cada tabla y se devuelve al repintar.
       var desplazamientos = {};
-      Object.keys(contenedores).forEach(function (clave) { desplazamientos[clave] = contenedores[clave].scrollLeft; });
+      Object.keys(contenedores).forEach(function (k) { desplazamientos[k] = contenedores[k].scrollLeft; });
       contenedores = {};
       a.vaciar(nodos.resultados);
-      if (vista.mensaje) {
+      if (pasado) {
+        // El aviso rojo está arriba; sin resultados mientras se pase del tope.
+      } else if (vista.mensaje) {
         nodos.resultados.appendChild(a.el("p", { "class": "mc-mensaje", role: "status" }, vista.mensaje));
       } else {
         nodos.resultados.appendChild(pintarResumen(vista));
         nodos.resultados.appendChild(pintarGrafico(vista));
         nodos.resultados.appendChild(pintarLectura(vista));
         nodos.resultados.appendChild(pintarTabla(vista));
-        Object.keys(contenedores).forEach(function (clave) {
-          if (desplazamientos[clave]) contenedores[clave].scrollLeft = desplazamientos[clave];
+        Object.keys(contenedores).forEach(function (k) {
+          if (desplazamientos[k]) contenedores[k].scrollLeft = desplazamientos[k];
         });
       }
-    } catch (e) {
-      mostrarError(e);
+    } catch (err) {
+      mostrarError(err);
     }
   }
 
@@ -836,7 +936,7 @@
     if (nodos) base().vaciar(nodos.resultados);
   }
 
-  var seccion = { id: "mi-campo", titulo: "Mi campo", grupo: "historico", montar: montar, actualizar: actualizar, limpiar: limpiar };
+  var seccion = { id: "mi-campo", titulo: "Probá variantes", grupo: "historico", montar: montar, actualizar: actualizar, limpiar: limpiar };
 
   var api = { armarVista: armarVista, textoDeFrase: textoDeFrase, seccion: seccion, FORMULAS: FORMULAS };
   raiz.TESIS_MI_CAMPO = api;

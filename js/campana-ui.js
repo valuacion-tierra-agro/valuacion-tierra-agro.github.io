@@ -184,16 +184,32 @@
   };
   var FORMATO_NOTA = { rinde: "usd2", cd: "usd", cc: "usd2", gc: "usd2" };
 
-  function crearCampo(id, etiqueta, unidad, alCambiar) {
-    var input = el("input", { type: "text", inputmode: "decimal", id: id, autocomplete: "off", spellcheck: "false" });
+  // Deja sólo dígitos (hasta 5): las hectáreas no admiten letras, signos ni separadores, ni al tipear ni al pegar.
+  function soloDigitos(texto) { return String(texto).replace(/\D/g, "").slice(0, 5); }
+
+  // opciones.entero: casillero corto de sólo dígitos (hectáreas), con un dibujito de parcela al lado.
+  function crearCampo(id, etiqueta, unidad, alCambiar, opciones) {
+    var entero = !!(opciones && opciones.entero);
+    var input = el("input", { type: "text", inputmode: entero ? "numeric" : "decimal", id: id, autocomplete: "off", spellcheck: "false" });
+    if (entero) {
+      input.setAttribute("maxlength", "5");
+      input.setAttribute("pattern", "[0-9]*");
+      var limpiar = function () { var limpio = soloDigitos(input.value); if (input.value !== limpio) input.value = limpio; };
+      input.addEventListener("beforeinput", function (ev) {
+        // Bloquea al tipear: si lo que se inserta no es sólo dígitos, no entra (el pegado se limpia en «input»).
+        if (ev && typeof ev.data === "string" && ev.data !== "" && /\D/.test(ev.data) && ev.inputType !== "insertFromPaste" && typeof ev.preventDefault === "function") ev.preventDefault();
+      });
+      input.addEventListener("input", limpiar);
+    }
     var nota = el("p", { "class": "sc-nota", id: id + "-nota" });
     var error = el("p", { "class": "mc-error", id: id + "-error", role: "alert" });
     error.hidden = true;
     input.setAttribute("aria-describedby", id + "-nota " + id + "-error");
     input.addEventListener("input", function () { alCambiar(input.value); });
-    var contenedor = el("div", { "class": "sc-campo" }, [
+    var dibujo = entero && V() && V().dibujoParcelaChica ? V().dibujoParcelaChica() : null;
+    var contenedor = el("div", { "class": "sc-campo" + (entero ? " sc-campo-entero" : "") }, [
       el("label", { "for": id }, etiqueta),
-      el("div", { "class": "sc-campo-fila" }, [input, el("span", { "class": "sc-unidad" }, unidad)]),
+      el("div", { "class": "sc-campo-fila" }, [input, el("span", { "class": "sc-unidad" }, unidad)].concat(dibujo ? [dibujo] : [])),
       nota, error
     ]);
     return { contenedor: contenedor, input: input, nota: nota, error: error };
@@ -241,8 +257,8 @@
       cont.appendChild(el("figure", { "class": "sc-mapa" }, [
         mapaNodo,
         el("figcaption", { "class": "sc-mapa-pie" }, [
-          el("strong", null, "Zonas aproximadas según la tesis."),
-          " Tocá una zona del mapa o elegila en la lista de abajo; lo gris no pertenece a ninguna de las 8 zonas.",
+          el("strong", null, "Regiones aproximadas:"),
+          " cada partido se asigna a la zona de la tesis más cercana dentro de su provincia. Los partidos de color más fuerte son los de referencia de la tesis. Tocá una región o elegila en la lista; lo gris no pertenece a ninguna zona.",
           el("small", { "class": "sc-mapa-credito" }, raiz.TESIS_MAPA.atribucion)
         ])
       ]));
@@ -261,7 +277,8 @@
     nodos.chips = {};
     var fila = el("div", { "class": "sc-chips", role: "group", "aria-label": "Cultivos" });
     C().CULTIVOS.forEach(function (cultivo) {
-      var chip = el("button", { type: "button", "class": "sc-chip", "aria-pressed": "false", "data-cultivo": cultivo }, cultivo);
+      var icono = V() && V().iconoCultivo ? el("span", { "class": "sc-chip-icono sc-cultivo-" + cultivo.toLowerCase().replace("í", "i") }, [V().iconoCultivo(cultivo)]) : null;
+      var chip = el("button", { type: "button", "class": "sc-chip sc-chip-cultivo", "aria-pressed": "false", "data-cultivo": cultivo }, icono ? [icono, cultivo] : cultivo);
       chip.addEventListener("click", function () { alternarCultivo(cultivo); });
       nodos.chips[cultivo] = chip;
       fila.appendChild(chip);
@@ -273,7 +290,7 @@
     nodos.bloquesHa = {};
     nodos.calendario = {};
     C().CULTIVOS.forEach(function (cultivo) {
-      var campoHa = crearCampo(idCampo(cultivo, "ha"), "Hectáreas de " + cultivo.toLowerCase(), "ha", function (valor) { estado.textos[cultivo].ha = valor; pintarContadorHa(); revalidarSiHayError(); });
+      var campoHa = crearCampo(idCampo(cultivo, "ha"), "Hectáreas de " + cultivo.toLowerCase(), "ha", function (valor) { estado.textos[cultivo].ha = valor; pintarContadorHa(); pintarExcedidoHa(); revalidarSiHayError(); }, { entero: true });
       nodos.campos[cultivo] = { ha: campoHa };
       var nota = el("p", { "class": "sc-nota", id: idCampo(cultivo, "calendario-nota") });
       nodos.calendario[cultivo] = { nota: nota };
@@ -306,6 +323,20 @@
     return total > tope
       ? "Te pasaste del máximo: en este cultivo podés poner hasta " + fmMiles(libre) + " ha (el campo suma " + fmMiles(tope) + " ha como máximo)."
       : "Número entero, hasta " + fmMiles(libre) + " ha en este cultivo (entre todos los cultivos, " + fmMiles(tope) + " ha como máximo).";
+  }
+
+  // Al instante (en cada tecla): si el total pasa del tope, los casilleros de hectáreas, sus notas y el contador se ponen en rojo.
+  function pintarExcedidoHa() {
+    if (!estado || !nodos.campos) return;
+    var pasado = hectareasCargadas() > C().HECTAREAS_MAX_TOTAL;
+    estado.cultivos.forEach(function (c) {
+      var campo = nodos.campos[c] && nodos.campos[c].ha;
+      if (!campo) return;
+      campo.nota.textContent = notaHectareas(c);
+      campo.nota.setAttribute("data-excedido", pasado ? "true" : "false");
+      campo.contenedor.setAttribute("data-excedido", pasado ? "true" : "false");
+      campo.input.setAttribute("aria-invalid", pasado ? "true" : "false");
+    });
   }
 
   function pintarContadorHa() {
@@ -429,6 +460,9 @@
     });
     nodos.bloqueH = el("div", { "class": "sc-bloque-h", id: "sc-bloque-h" }, hijosH);
     cont.appendChild(nodos.bloqueH);
+    nodos.avisoDescubierto = el("p", { "class": "sc-aviso-descubierto", id: "sc-aviso-descubierto", role: "status" }, [el("strong", null, "Estás descubierto:"), " vas a cobrar el precio que haya el día de la cosecha."]);
+    nodos.avisoDescubierto.hidden = true;
+    cont.appendChild(nodos.avisoDescubierto);
     nodos.notaNo = el("p", { "class": "sc-nota" }, "Perfecto: vamos a mostrarte qué pasaría si cubrieras, sin pedirte nada más sobre futuros.");
     cont.appendChild(nodos.notaNo);
 
@@ -470,6 +504,7 @@
     nodos.botonesFuturos["No"].setAttribute("aria-pressed", estado.usaFuturos === false ? "true" : "false");
     nodos.bloqueH.hidden = estado.usaFuturos !== true;
     nodos.notaNo.hidden = estado.usaFuturos !== false;
+    nodos.avisoDescubierto.hidden = estado.usaFuturos !== false;
     C().CULTIVOS.forEach(function (c) {
       nodos.camposH[c].hidden = estado.cultivos.indexOf(c) < 0;
       nodos.selectH[c].value = String(Math.round((estado.h[c] || 0) * 100));
@@ -537,6 +572,7 @@
       var d = estado.defs[c];
       nodos.campos[c].ha.nota.textContent = notaHectareas(c);
       nodos.campos[c].ha.nota.setAttribute("data-excedido", hectareasCargadas() > C().HECTAREAS_MAX_TOTAL ? "true" : "false");
+      nodos.campos[c].ha.contenedor.setAttribute("data-excedido", hectareasCargadas() > C().HECTAREAS_MAX_TOTAL ? "true" : "false");
       pintarReferenciaRinde(c);
       var tn = C().leerDecimal(estado.textos[c].rinde);
       nodos.campos[c].rinde.nota.textContent = tn === null ? "Escribilo con coma decimal, por ejemplo 32,7." : "Equivale a " + coma(tn, 2) + " t/ha (10 qq = 1 t).";
@@ -1252,9 +1288,16 @@
     var rango = totalesCon[mejor] - totalesCon[peor];
     var rangoSin = Math.max.apply(null, totalesSin) - Math.min.apply(null, totalesSin);
 
+    var parcela = { cultivos: v.nombres.slice(), hectareas: {}, h: {}, toneladas: {}, producidas: {}, usd: {} };
+    v.nombres.forEach(function (c) {
+      var x = cob.porCultivo[c];
+      parcela.hectareas[c] = v.cultivos[c].ha; parcela.h[c] = x.h; parcela.toneladas[c] = x.toneladas; parcela.producidas[c] = x.producidas;
+      parcela.usd[c] = x.toneladas * futuroDe(c).valor;
+    });
+
     V().actualizarPanel(panel, {
       colores: { metal: colorDe("color-metal", "#2b2b2b") },
-      silos: silos,
+      silos: silos, parcela: parcela,
       medidor: {
         valor: reduccion, umbral: umbral, textoMarca: pct(umbral),
         colores: { texto: colorDe("color-texto", "#f4f4f4"), suave: colorDe("color-texto-suave", "#c6c6c6"), superficie: colorDe("color-superficie", "#262626"),

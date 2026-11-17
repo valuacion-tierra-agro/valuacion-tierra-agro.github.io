@@ -323,7 +323,7 @@
         "class": "grafico-eje",
         x: coord(grupo.x + grupo.ancho / 2), y: coord(g.alto - 10),
         "text-anchor": "middle", "font-size": g.letra, fill: "currentColor"
-      }, grupo.categoria));
+      }, typeof config.rotularCategoria === "function" ? config.rotularCategoria(grupo.categoria) : grupo.categoria));
     });
 
     return svg;
@@ -331,6 +331,7 @@
 
   // config: lo de geometriaBarras + { titulo, unidad, formatear(valor), etiquetarEje(valor) }.
   // etiquetarEje (opcional) escribe las marcas del eje; sin él se usa etiquetaEje (1,5 mil, 1,2 M).
+  // rotularCategoria (opcional) acorta solo el rótulo visible del eje x; el title de cada barra sigue con el nombre entero.
   function barrasAgrupadas(documento, config) {
     return dibujarBarras(documento, geometriaBarras(config), config, null);
   }
