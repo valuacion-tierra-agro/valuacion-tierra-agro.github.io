@@ -199,13 +199,19 @@
     return { contenedor: contenedor, input: input, nota: nota, error: error };
   }
 
-  function nodoDeZona(zona) {
+  function nodoDeZona(zona, i) {
     var d = C().detalleDeZona(zona);
-    var b = el("button", { type: "button", "class": "sc-zona-tarjeta", "aria-pressed": "false", "data-zona": zona }, [
+    var b = el("button", { type: "button", "class": "sc-zona-tarjeta", "aria-pressed": "false", "data-zona": zona, "data-color": String(i + 1) }, [
       el("span", { "class": "sc-zona-nombre" }, zona),
       el("span", { "class": "sc-zona-detalle" }, d.linea === zona ? "" : d.linea)
     ]);
     b.addEventListener("click", function () { elegirZona(zona); });
+    // Tarjeta y mapa van juntos: al apuntar a la tarjeta se resalta su zona en el mapa.
+    var resaltar = function (z) { return function () { if (nodos.mapa) nodos.mapa.resaltar(z); }; };
+    b.addEventListener("mouseenter", resaltar(zona));
+    b.addEventListener("focus", resaltar(zona));
+    b.addEventListener("mouseleave", resaltar(null));
+    b.addEventListener("blur", resaltar(null));
     return b;
   }
 
@@ -229,7 +235,19 @@
     cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Elegí la zona más parecida a la tuya. De ella tomamos los rindes, los costos y el valor de la tierra de referencia. Las zonas son las 8 que estudia la tesis."));
     nodos.tarjetasZona = {};
     var grilla = el("div", { "class": "sc-zonas", role: "group", "aria-label": "Zonas" });
-    C().zonas().forEach(function (z) { nodos.tarjetasZona[z] = nodoDeZona(z); grilla.appendChild(nodos.tarjetasZona[z]); });
+    C().zonas().forEach(function (z, i) { nodos.tarjetasZona[z] = nodoDeZona(z, i); grilla.appendChild(nodos.tarjetasZona[z]); });
+    if (raiz.TESIS_MAPA && raiz.TESIS_MAPA_UI) {
+      var mapaNodo = el("div", { "class": "sc-mapa-ec", "aria-hidden": "true" });
+      cont.appendChild(el("figure", { "class": "sc-mapa" }, [
+        mapaNodo,
+        el("figcaption", { "class": "sc-mapa-pie" }, [
+          el("strong", null, "Zonas aproximadas según la tesis."),
+          " Tocá una zona del mapa o elegila en la lista de abajo; lo gris no pertenece a ninguna de las 8 zonas.",
+          el("small", { "class": "sc-mapa-credito" }, raiz.TESIS_MAPA.atribucion)
+        ])
+      ]));
+      nodos.mapa = raiz.TESIS_MAPA_UI.montar({ nodo: mapaNodo, zonas: C().zonas(), detalle: C().detalleDeZona, alElegir: elegirZona, elegida: function () { return estado.zona; } });
+    }
     cont.appendChild(grilla);
   }
 
@@ -534,6 +552,7 @@
   function sincronizarTodo() {
     var zona = estado.zona;
     Object.keys(nodos.tarjetasZona).forEach(function (z) { nodos.tarjetasZona[z].setAttribute("aria-pressed", z === zona ? "true" : "false"); });
+    if (nodos.mapa) nodos.mapa.dibujar();
     var ofrecidos = Object.keys(estado.defs);
     nodos.avisoSinZona.hidden = !!zona;
     C().CULTIVOS.forEach(function (c) {
@@ -1862,7 +1881,7 @@
     textosParaCalcular: function () { return textosParaCalcular(); }, estado: function () { return estado; }, contexto: contexto,
     armarLink: armarLink, leerLink: leerLink, aplicarLink: function (hash) { var r = aplicarLink(hash); if (r && base().refrescar) base().refrescar(); return r; },
     nombres: function () { return { campo: nombres.campo, persona: nombres.persona }; }, CLAVE_INFORME: CLAVE_INFORME, MAX_NOMBRE: MAX_NOMBRE,
-    PASOS: PASOS, vista: function () { return ultimaVista; }
+    PASOS: PASOS, vista: function () { return ultimaVista; }, elegirZona: elegirZona, mapa: function () { return nodos.mapa || null; }
   };
   var seccion = { id: "campana", titulo: "Simulá tu campaña", icono: "sprout", sinDatos: true, montar: montar, actualizar: actualizar, limpiar: limpiar };
   raiz.TESIS_CAMPANA_UI = api;

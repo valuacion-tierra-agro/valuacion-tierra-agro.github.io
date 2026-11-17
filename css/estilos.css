@@ -52,6 +52,15 @@
   --color-zona-6: var(--color-supuesto);
   --color-zona-7: var(--color-trigo);
   --color-zona-8: var(--color-proyectado);
+  /* Ocho colores del mapa de zonas (paso 1) y de los cuadraditos de sus tarjetas; ninguno es gris: el gris es «sin zona» */
+  --color-mapa-1: #4589ff;
+  --color-mapa-2: #009d9a;
+  --color-mapa-3: #a56eff;
+  --color-mapa-4: #eb6200;
+  --color-mapa-5: #ee5396;
+  --color-mapa-6: #82cfff;
+  --color-mapa-7: #f1c21b;
+  --color-mapa-8: #42be65;
   --radio: 0;
   --fuente-texto: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --fuente-titulos: var(--fuente-texto);
@@ -2132,8 +2141,8 @@ output {
 /* Mosaico de zona: superficie con un borde de 2 px que sólo se pinta de acento en la elegida (así no se mueve nada) */
 .sc-zona-tarjeta {
   display: grid;
-  gap: 0.25rem;
-  padding: 1rem;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
   font: inherit;
   text-align: left;
   color: var(--color-texto);
@@ -2156,8 +2165,56 @@ output {
   font-weight: 600;
 }
 
+/* Cuadradito con el color de la zona en el mapa */
+.sc-zona-nombre::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.5rem;
+  background-color: var(--zc, var(--color-acento));
+}
+
+.sc-zona-tarjeta[data-color="1"] { --zc: var(--color-mapa-1); }
+.sc-zona-tarjeta[data-color="2"] { --zc: var(--color-mapa-2); }
+.sc-zona-tarjeta[data-color="3"] { --zc: var(--color-mapa-3); }
+.sc-zona-tarjeta[data-color="4"] { --zc: var(--color-mapa-4); }
+.sc-zona-tarjeta[data-color="5"] { --zc: var(--color-mapa-5); }
+.sc-zona-tarjeta[data-color="6"] { --zc: var(--color-mapa-6); }
+.sc-zona-tarjeta[data-color="7"] { --zc: var(--color-mapa-7); }
+.sc-zona-tarjeta[data-color="8"] { --zc: var(--color-mapa-8); }
+
+/* Mapa de zonas: apoyo visual del paso 1; la lista de tarjetas de abajo es la versión accesible */
+.sc-mapa {
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sc-mapa-ec {
+  width: 100%;
+  height: 32.5rem;
+}
+
+.sc-mapa-pie {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--color-texto-suave);
+}
+
+.sc-mapa-pie strong {
+  color: var(--color-texto);
+}
+
+.sc-mapa-credito {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
 .sc-zona-detalle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   line-height: 1.35;
   color: var(--color-texto-suave);
 }

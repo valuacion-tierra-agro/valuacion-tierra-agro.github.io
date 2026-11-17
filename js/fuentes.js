@@ -622,6 +622,9 @@
     acordeon("precios", "Precios");
     acordeon("tierra", "Valor de la tierra");
     var estadistica = acordeon("estadistica", "Datos y estadística");
+    if (raiz.TESIS_MAPA) contenedor.appendChild(el("p", { "class": "ayuda df-mapa-credito", id: "df-mapa-credito" },
+      "Mapa de zonas (paso 1 de «Simulá tu campaña»): " + raiz.TESIS_MAPA.atribucion + ". Servicio de Normalización de Datos Geográficos, datos.gob.ar. " +
+      "Los límites se simplificaron para que el mapa pese poco. Las zonas son aproximadas: salen de los partidos que figuran en la hoja Rindes_trigo_partidos de TIF_01_Rindes_y_costos_2.xlsx."));
     nodos.avisoDatos = el("p", { id: "aviso-datos", "class": "aviso-datos", role: "note" });
     nodos.controlVivo = el("p", { id: "control-vivo", "class": "control-vivo", role: "status" });
     estadistica.appendChild(nodos.avisoDatos);
