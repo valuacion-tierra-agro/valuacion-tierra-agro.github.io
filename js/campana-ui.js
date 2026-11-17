@@ -342,6 +342,9 @@
     cont.appendChild(fila);
     nodos.avisoSinZona = el("p", { "class": "sc-nota" }, "Primero elegí tu zona en el paso 1.");
     cont.appendChild(nodos.avisoSinZona);
+    // Algunas zonas no tienen datos de los tres cultivos (por ejemplo, solo trigo): se avisa para que no parezca que falta algo.
+    nodos.avisoPocosCultivos = el("p", { "class": "sc-nota sc-aviso-cultivos", id: "sc-aviso-cultivos", hidden: "hidden" });
+    cont.appendChild(nodos.avisoPocosCultivos);
     nodos.campos = {};
     nodos.bloquesHa = {};
     nodos.calendario = {};
@@ -682,6 +685,13 @@
     if (nodos.mapa) nodos.mapa.dibujar();
     var ofrecidos = Object.keys(estado.defs);
     nodos.avisoSinZona.hidden = !!zona;
+    var faltan = C().CULTIVOS.filter(function (c) { return ofrecidos.indexOf(c) < 0; });
+    nodos.avisoPocosCultivos.hidden = !zona || faltan.length === 0;
+    if (zona && faltan.length) {
+      var lista = function (xs) { return xs.map(function (c) { return c.toLowerCase(); }).join(xs.length === 2 ? " y " : ", "); };
+      nodos.avisoPocosCultivos.textContent = "En " + zona + " hay datos " + (ofrecidos.length === 1 ? "solo de " : "de ") + lista(ofrecidos) +
+        ": no hay campañas de " + lista(faltan) + " para esta zona. Si sembrás " + (faltan.length === 1 ? "ese cultivo" : "esos cultivos") + ", elegí una zona vecina que los tenga.";
+    }
     C().CULTIVOS.forEach(function (c) {
       var hay = ofrecidos.indexOf(c) >= 0;
       var activo = estado.cultivos.indexOf(c) >= 0;
