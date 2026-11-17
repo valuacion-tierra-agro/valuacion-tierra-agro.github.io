@@ -1260,10 +1260,12 @@
       return;
     }
     arrancado = true;
+    var FECHA_FUTUROS = "16/11/2026";
     var pie = doc.getElementById("pie-datos");
     if (pie) {
       try {
-        pie.textContent = "Datos extraídos el " + formatoFecha(datos.meta.extraidoEl) + " de los Excels definitivos del grupo.";
+        // Dos fechas: los Excel de la tesis (datos.meta.extraidoEl) y los futuros 2026/27 de campana.js (cargados el 16/11/2026).
+        pie.textContent = "Datos de los Excel de la tesis: " + formatoFecha(datos.meta.extraidoEl) + ". Futuros 2026/27: Bolsa de Comercio de Rosario, al " + FECHA_FUTUROS + ".";
       } catch (e) {
         pie.textContent = "Datos extraídos de los Excels definitivos del grupo.";
       }

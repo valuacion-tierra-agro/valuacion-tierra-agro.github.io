@@ -166,43 +166,81 @@
     return frase;
   }
 
-  // La conclusión con los números del motor: la reducción con rinde real de cada cultivo y el veredicto.
-  function armarConclusion(cultivos, meta) {
-    var v = veredicto(cultivos, meta);
-    var validos = cultivos.filter(function (c) { return c.real && esNumero(c.real.v); });
-    if (validos.length === 0) return v;
-    var bajaron = validos.every(function (c) { return c.real.v > 0; });
-    var por = validos.map(function (c) { return [c.real, " en " + c.cultivo.toLowerCase()]; });
-    var intro = bajaron ? "Con rinde real la cobertura bajó el riesgo " : "Con rinde real la reducción del riesgo con la cobertura fue de ";
-    return { seCumple: v.seCumple, frase: [intro].concat(enumerarPartes(por), [". "], v.frase) };
-  }
-
-  // Cada serie dice en qué se mide: el rinde fijo en USD/ha (sólo cambia el precio) y el rinde real en
-  // rentabilidad, que es la medida de la hipótesis. (El rinde real en USD/ha está en la tabla.)
-  var SERIE_FIJO = "Con rinde fijo (sólo precio, medido en USD/ha)";
   var SERIE_REAL = "Con rinde real (medido en rentabilidad)";
   var AVISO_SIN_GRAFICO = "No se puede graficar: el riesgo sin cobertura de algún cultivo es 0.";
+  var CLAVE_CULTIVO = { "Trigo": "trigo", "Soja": "soja", "Maíz": "maiz" };
 
-  // Datos del gráfico de barras: los mismos valores de la tabla, contra la línea de la hipótesis.
-  // Si alguna reducción no se pudo calcular no se grafica nada (una barra en 0 mentiría).
+  // Cifras de la tesis (rinde fijo, rentabilidad, 114 casos): salen de datos-tesis.js, con su origen.
+  function cifrasTesis() { return raiz.TESIS_CIFRAS; }
+
+  // Filas de la tesis: una por cultivo y el total, con la reducción del desvío con cobertura del 100 % y del 50 %.
+  function armarFilasTesis(cultivos) {
+    var c = cifrasTesis();
+    var celdaDe = function (x) { return celda(x.v, "porcentaje", x.o); };
+    var filas = cultivos.map(function (k) {
+      var clave = CLAVE_CULTIVO[k.cultivo];
+      return { nombre: k.cultivo, total: false, cien: celdaDe(c.reduccionRindeFijoPorCultivo[clave]), cincuenta: celdaDe(c.reduccionRindeFijo50PorCultivo[clave]) };
+    });
+    filas.push({ nombre: "Total", total: true, cien: celdaDe(c.reduccionRindeFijo), cincuenta: celdaDe(c.reduccionRindeFijo50) });
+    return filas;
+  }
+
+  // La conclusión principal es la de la tesis: rinde fijo, en rentabilidad. Se cumple si todos los cultivos llegan a la meta.
+  function armarConclusionTesis(filas, meta) {
+    var cultivos = filas.filter(function (f) { return !f.total; });
+    var total = filas.filter(function (f) { return f.total; })[0];
+    var v = veredicto(cultivos.map(function (f) { return { cultivo: f.nombre, real: f.cien }; }), meta);
+    var porCultivo = cultivos.map(function (f) { return [f.cien, " en " + f.nombre.toLowerCase()]; });
+    var frase = ["Con el rinde fijo, como mide la tesis, la cobertura del 100 % reduce ", total.cien,
+      " el desvío de la rentabilidad realizada respecto de la proyectada ("].concat(enumerarPartes(porCultivo),
+      ["); con el 50 % cubierto la reduce ", total.cincuenta, ". "], v.frase);
+    return { seCumple: v.seCumple, frase: frase };
+  }
+
+  function armarGraficoTesis(filas, meta) {
+    var f = base().formato;
+    var porcentajeMeta = f.aplicar(meta.formato, meta.v);
+    return {
+      titulo: "Reducción del desvío de la rentabilidad con rinde fijo (tesis, 114 casos), contra el " + porcentajeMeta + " que pide la hipótesis",
+      unidad: "",
+      categorias: filas.map(function (x) { return x.nombre; }),
+      series: [
+        { nombre: "Con el 100 % cubierto", clase: "serie-con", valores: filas.map(function (x) { return x.cien.v; }) },
+        { nombre: "Con el 50 % cubierto", clase: "serie-proyectado", valores: filas.map(function (x) { return x.cincuenta.v; }) }
+      ],
+      referencia: { valor: meta.v, nombre: "Lo que pide la hipótesis (" + porcentajeMeta + ")", etiqueta: porcentajeMeta },
+      margen: { derecha: 54 }
+    };
+  }
+
+  // Análisis complementario: con rinde real. Una sola serie (rentabilidad); no es la medida de la hipótesis.
   function armarGrafico(cultivos, meta) {
     var f = base().formato;
-    var completos = cultivos.length > 0 && cultivos.every(function (c) { return esNumero(c.fijo.v) && esNumero(c.real.v); });
+    var completos = cultivos.length > 0 && cultivos.every(function (c) { return esNumero(c.real.v); });
     if (!completos) return null;
     var porcentajeMeta = f.aplicar(meta.formato, meta.v);
     return {
-      titulo: "Reducción del riesgo por cultivo con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto: con rinde fijo (en USD/ha) y con rinde real (en rentabilidad), contra el " +
-        porcentajeMeta + " que pide la hipótesis",
+      titulo: "Con rinde real: reducción del riesgo por cultivo con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto, en rentabilidad, contra el " + porcentajeMeta + " de la hipótesis",
       unidad: "",
       categorias: cultivos.map(function (c) { return c.cultivo; }),
       series: [
-        { nombre: SERIE_FIJO, clase: "serie-proyectado", valores: cultivos.map(function (c) { return c.fijo.v; }) },
         { nombre: SERIE_REAL, clase: "serie-con", valores: cultivos.map(function (c) { return c.real.v; }) }
       ],
-      referencia: { valor: meta.v, nombre: "Lo que pide la hipótesis (" + porcentajeMeta + ")", etiqueta: porcentajeMeta },
-      // Lugar para la etiqueta de la línea («50,0 %») a la derecha del área, con la letra del gráfico.
+      referencia: { valor: meta.v, nombre: "Referencia: " + porcentajeMeta + " (umbral de la hipótesis)", etiqueta: porcentajeMeta },
       margen: { derecha: 54 }
     };
+  }
+
+  // Texto del complementario: de cuánto a cuánto baja el riesgo con rinde real y por qué es menos.
+  function armarComplemento(cultivos) {
+    var validos = cultivos.filter(function (c) { return c.real && esNumero(c.real.v); });
+    if (validos.length === 0) return [];
+    var menor = validos.reduce(function (acc, c) { return c.real.v < acc.real.v ? c : acc; });
+    var mayor = validos.reduce(function (acc, c) { return c.real.v > acc.real.v ? c : acc; });
+    var sinDato = cultivos.filter(function (c) { return !(c.real && esNumero(c.real.v)); }).map(function (c) { return c.cultivo.toLowerCase(); });
+    var falta = sinDato.length ? " Falta el dato de " + enumerar(sinDato) + "." : "";
+    return ["Con rinde real, la cobertura de precio reduce menos el riesgo (de ", menor.real, " a ", mayor.real,
+      "), porque no cubre el riesgo de cosecha. No es la medida de la hipótesis." + falta];
   }
 
   function armarHipotesis(datos) {
@@ -233,17 +271,24 @@
       return { cultivo: cultivo, fijo: fijo, real: real, realUsd: realUsd, llega: llegaAlMinimo(real, meta) };
     });
 
-    var conclusion = armarConclusion(cultivos, meta);
+    var filasTesis = armarFilasTesis(cultivos);
+    var conclusion = armarConclusionTesis(filasTesis, meta);
     return {
       meta: meta,
       cultivos: cultivos,
+      filasTesis: filasTesis,
       seCumple: conclusion.seCumple,
       conclusion: conclusion.frase,
-      medidas: armarMedidas(cultivos, meta),
-      explicacion: EXPLICACION,
       explicacionFijo: EXPLICACION_FIJO,
       aviso: AVISO,
-      grafico: armarGrafico(cultivos, meta)
+      grafico: armarGraficoTesis(filasTesis, meta),
+      complementario: {
+        titulo: "Análisis complementario: si además cambia el rinde",
+        texto: armarComplemento(cultivos),
+        explicacion: EXPLICACION,
+        medidas: armarMedidas(cultivos, meta),
+        grafico: armarGrafico(cultivos, meta)
+      }
     };
   }
 
@@ -684,45 +729,12 @@
   // Filtro de «Zona por zona»: se recuerda acá (no es parte del estado compartido de la página).
   var filtroCultivo = "todos";
 
-  // Decisión del grupo (2026-11-15): la hipótesis de la tesis se mide con rinde fijo. Este aviso va arriba de la sección histórica, en su
-  // propio recuadro; el texto de la sección no se toca. Los porcentajes salen de los datos (armarHipotesis), no se tipean.
-  function armarAvisoRindeFijo(datos, hipotesis) {
-    var h = hipotesis || armarHipotesis(datos);
-    var fijos = h.cultivos.map(function (c) { return c.fijo; });
-    var reales = h.cultivos.map(function (c) { return c.real; });
-    var promedio = raiz.TESIS_MOTOR.promedio(fijos.map(function (c) { return c.v; }));
-    var menor = reales.reduce(function (acc, c) { return !acc || c.v < acc.v ? c : acc; }, null);
-    var mayor = reales.reduce(function (acc, c) { return !acc || c.v > acc.v ? c : acc; }, null);
-    return { promedioFijo: promedio, origenesFijo: fijos.map(function (c) { return c.origen; }), menorReal: menor, mayorReal: mayor };
-  }
-
-  // Se pinta junto con el resto de la sección y se borra con ella si el cálculo falla (no quedan cifras viejas).
-  function pintarAvisoRindeFijo(hipotesis) {
-    var a = base();
-    a.vaciar(nodos.avisoFijo);
-    var d;
-    // Si falta algún dato (la sección lo avisa a su manera en el gráfico y la conclusión), el recuadro no se pinta con cifras a medias.
-    try {
-      if (hipotesis.cultivos.some(function (c) { return !esNumero(c.fijo.v) || !esNumero(c.real.v); })) return;
-      d = armarAvisoRindeFijo(raiz.TESIS_DATOS, hipotesis);
-    } catch (e) { return; }
-    nodos.avisoFijo.appendChild(a.el("div", { "class": "tarjeta rh-aviso-rinde-fijo", id: "rh-aviso-rinde-fijo", role: "note" }, [
-      a.el("p", null, [a.el("strong", null, "La hipótesis de la tesis se mide con rinde fijo. "),
-        "La cobertura reduce cerca del ", a.numero(d.promedioFijo, "porcentaje", a.origenCalculado("promedio simple de los tres cultivos de la reducción del riesgo con rinde fijo", d.origenesFijo)),
-        " del riesgo y la hipótesis se cumple. Abajo se muestra además un análisis con rinde real (la reducción va de ",
-        a.numero(d.menorReal.v, "porcentaje", d.menorReal.origen), " a ", a.numero(d.mayorReal.v, "porcentaje", d.mayorReal.origen),
-        "), que incluye el riesgo de cosecha; no es la medida de la hipótesis."])
-    ]));
-  }
-
   function montar(contenedor) {
     var a = base();
     var el = a.el;
     nodos = {};
     pintado = { datos: null, estaticos: false };
     filtroCultivo = "todos";
-    nodos.avisoFijo = el("div", { id: "rh-aviso-fijo-lugar" });
-    contenedor.appendChild(nodos.avisoFijo);
     contenedor.appendChild(el("p", { "class": "rh-intro" },
       "Cuánto riesgo le saca la cobertura con futuros al productor y qué pasa con el 50 % que pedía la hipótesis de la tesis."));
     nodos.hipotesis = el("div", { id: "rh-hipotesis-resultados" });
@@ -770,40 +782,48 @@
     ]));
   }
 
+  // Tabla de la tesis: reducción del desvío con rinde fijo, con el 100 % y con el 50 % cubierto.
+  function pintarTablaTesis(h) {
+    var a = base();
+    var el = a.el;
+    var celdaNumero = function (c) { return el("td", null, a.numero(c.v, c.formato, c.origen)); };
+    return el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla" }, [
+      el("caption", null, "Reducción del desvío de la rentabilidad con rinde fijo (tesis, 114 casos)"),
+      el("thead", null, el("tr", null, ["Cultivo", "Con el 100 % cubierto", "Con el 50 % cubierto"].map(function (t) { return el("th", { scope: "col" }, t); }))),
+      el("tbody", null, h.filasTesis.map(function (f) {
+        return el("tr", null, [el("th", { scope: "row" }, f.nombre), celdaNumero(f.cien), celdaNumero(f.cincuenta)]);
+      }))
+    ]));
+  }
+
+  // Tabla del análisis complementario (rinde real).
   function pintarTablaHipotesis(h) {
     var a = base();
     var el = a.el;
-    var columnas = ["Cultivo", "Con rinde fijo, en USD/ha (sólo precio)", "Con rinde real, en rentabilidad (la medida de la hipótesis)", "Con rinde real, en USD/ha",
-      "Con rinde real, en rentabilidad, ¿llega al " + a.formato.aplicar(h.meta.formato, h.meta.v) + "?"];
+    var columnas = ["Cultivo", "Con rinde real, en rentabilidad", "Con rinde real, en USD/ha"];
     var celdaNumero = function (c) { return el("td", null, a.numero(c.v, c.formato, c.origen)); };
     return el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla rh-tabla" }, [
-      el("caption", null, "Cuánto riesgo sacó la cobertura con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto"),
+      el("caption", null, "Con rinde real: cuánto riesgo sacó la cobertura con el " + enteroConPorcentaje(H_HIPOTESIS) + " cubierto"),
       el("thead", null, el("tr", null, columnas.map(function (texto) { return el("th", { scope: "col" }, texto); }))),
       el("tbody", null, h.cultivos.map(function (c) {
-        return el("tr", null, [
-          el("th", { scope: "row" }, c.cultivo),
-          celdaNumero(c.fijo),
-          celdaNumero(c.real),
-          celdaNumero(c.realUsd),
-          el("td", null, c.llega ? "Sí" : "No")
-        ]);
+        return el("tr", null, [el("th", { scope: "row" }, c.cultivo), celdaNumero(c.real), celdaNumero(c.realUsd)]);
       }))
     ]));
   }
 
   // Gráfico de barras con la línea de la hipótesis y su leyenda en texto (los colores solos no alcanzan).
-  function pintarGrafico(h) {
+  function pintarGrafico(grafico) {
     var a = base();
     var el = a.el;
-    if (!h.grafico) return el("p", { "class": "ayuda" }, AVISO_SIN_GRAFICO);
+    if (!grafico) return el("p", { "class": "ayuda" }, AVISO_SIN_GRAFICO);
     var etiquetarEje = function (valor) { return a.formato.numero(valor * 100, 0) + NBSP + "%"; };
-    var svg = raiz.TESIS_GRAFICOS.barrasAgrupadas(raiz.document, Object.assign({ formatear: a.formato.porcentaje, etiquetarEje: etiquetarEje }, h.grafico));
-    var items = h.grafico.series.map(function (serie) {
+    var svg = raiz.TESIS_GRAFICOS.barrasAgrupadas(raiz.document, Object.assign({ formatear: a.formato.porcentaje, etiquetarEje: etiquetarEje }, grafico));
+    var items = grafico.series.map(function (serie) {
       return el("li", null, [el("span", { "class": "muestra-serie " + serie.clase, "aria-hidden": "true" }), serie.nombre]);
     });
-    items.push(el("li", null, [el("span", { "class": "muestra-referencia", "aria-hidden": "true" }), h.grafico.referencia.nombre]));
+    items.push(el("li", null, [el("span", { "class": "muestra-referencia", "aria-hidden": "true" }), grafico.referencia.nombre]));
     return el("figure", { "class": "rh-grafico" }, [
-      a.encabezadoDeGrafico(h.grafico.titulo, "reducción del riesgo, en porcentaje"),
+      a.encabezadoDeGrafico(grafico.titulo, "reducción del riesgo, en porcentaje"),
       svg,
       el("figcaption", null, [el("ul", { "class": "leyenda" }, items), el("p", { "class": "ayuda" }, "Los valores exactos están en la tabla de abajo.")])
     ]);
@@ -813,12 +833,17 @@
     var a = base();
     var el = a.el;
     a.vaciar(nodos.hipotesis);
-    nodos.hipotesis.appendChild(pintarGrafico(h));
     nodos.hipotesis.appendChild(el("p", { "class": "rh-conclusion" }, nodosDeFrase(h.conclusion)));
-    nodos.hipotesis.appendChild(el("p", { "class": "rh-explicacion" }, h.explicacion));
+    nodos.hipotesis.appendChild(pintarGrafico(h.grafico));
     nodos.hipotesis.appendChild(el("p", { "class": "rh-explicacion" }, h.explicacionFijo));
-    if (h.medidas.length) nodos.hipotesis.appendChild(el("p", { "class": "rh-explicacion" }, nodosDeFrase(h.medidas)));
-    nodos.hipotesis.appendChild(pintarTablaHipotesis(h));
+    nodos.hipotesis.appendChild(pintarTablaTesis(h));
+    var c = h.complementario;
+    var hijos = [el("h4", null, c.titulo)];
+    if (c.texto.length) hijos.push(el("p", { "class": "rh-explicacion" }, nodosDeFrase(c.texto)));
+    hijos.push(el("p", { "class": "rh-explicacion" }, c.explicacion));
+    hijos.push(pintarGrafico(c.grafico));
+    hijos.push(pintarTablaHipotesis(h));
+    nodos.hipotesis.appendChild(el("div", { "class": "rh-complementario", id: "rh-complementario" }, hijos));
   }
 
   // Un texto con origen (campaña, «subió»): se toca igual que un número con el mouse o el dedo. Como los números de las
@@ -1005,7 +1030,6 @@
     if (pintado.datos !== datos) pintado = { datos: datos, estaticos: false };
     if (!pintado.estaticos) {
       pintado.hipotesis = armarHipotesis(datos);
-      pintarAvisoRindeFijo(pintado.hipotesis);
       pintarHipotesis(pintado.hipotesis);
       var zonas = armarZonas(datos, filtroCultivo);
       pintarZonas(zonas);
@@ -1037,7 +1061,6 @@
   function limpiar() {
     pintado = { datos: null, estaticos: false };
     if (!nodos) return;
-    base().vaciar(nodos.avisoFijo);
     base().vaciar(nodos.hipotesis);
     base().vaciar(nodos.zonas);
     base().vaciar(nodos.balance);

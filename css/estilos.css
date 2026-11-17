@@ -1147,6 +1147,22 @@ output {
   color: var(--color-texto-suave);
 }
 
+/* Análisis complementario (rinde real): va abajo de la conclusión de la tesis, con un corte y un tono más bajo */
+.rh-complementario {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-borde);
+}
+
+.rh-complementario h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+
 /* Tabla de la hipótesis: la columna del cultivo es angosta (las otras son porcentajes) */
 .rh-tabla > tbody > tr > th {
   width: 6rem;
@@ -2312,10 +2328,296 @@ output {
   margin: 0.25rem 0 0;
 }
 
+/* ----------------------------------------------------------------------------------------
+   Resultados de «Simulá tu campaña»: silos, medidor de riesgo y los seis años sobre una recta
+   (los dibuja js/campana-visual.js; con menos movimiento o sin las bibliotecas de vendor/ quedan quietos)
+   ---------------------------------------------------------------------------------------- */
+
+/* Scroll suave de Lenis (las reglas mínimas que pide la biblioteca) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+.sc-visual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 1000px) {
+  .sc-visual {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sc-bloque-silos {
+    grid-column: 1 / -1;
+  }
+}
+
+.sc-visual-bloque {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.sc-visual-bloque h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+.sc-visual-cuerpo {
+  display: grid;
+  justify-items: center;
+}
+
+.sc-visual-frase {
+  margin: 0;
+}
+
+.sc-visual-grande {
+  font-family: var(--fuente-titulos);
+  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-texto);
+}
+
+/* Silos: uno por cultivo, con el líquido de ECharts; si no está liquidfill queda la barra con la misma forma */
+.sc-silos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem 2.5rem;
+}
+
+.sc-silo {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.sc-silo-caja {
+  position: relative;
+  width: 120px;
+  height: 170px;
+}
+
+.sc-silo-ec {
+  position: absolute;
+  inset: 0;
+}
+
+.sc-silo-cuerpo {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 26%, 50% 0, 100% 26%, 100% 100%, 0 100%);
+  background-color: var(--color-borde);
+  display: flex;
+  align-items: flex-end;
+}
+
+.sc-silo-relleno {
+  width: 100%;
+  height: 0;
+  background-color: var(--color-con);
+  transition: height 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sc-cultivo-trigo .sc-silo-relleno {
+  background-color: var(--color-trigo);
+}
+
+.sc-cultivo-soja .sc-silo-relleno {
+  background-color: var(--color-soja);
+}
+
+.sc-cultivo-maiz .sc-silo-relleno {
+  background-color: var(--color-maiz);
+}
+
+.sc-silo-caja[data-modo="liquido"] .sc-silo-cuerpo,
+.sc-silo-caja[data-modo="barra"] .sc-silo-ec {
+  display: none;
+}
+
+.sc-silo-texto {
+  font-size: 0.875rem;
+  text-align: center;
+  color: var(--color-texto-suave);
+}
+
+/* Medidor: arco de media vuelta; la marca es el umbral de la hipótesis */
+.sc-medidor {
+  position: relative;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.sc-medidor-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sc-medidor-pista,
+.sc-medidor-valor {
+  stroke-width: 14;
+}
+
+.sc-medidor-pista {
+  stroke: var(--color-borde);
+}
+
+.sc-medidor-valor {
+  stroke: var(--color-con);
+  transition: stroke-dashoffset 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sc-medidor-marca {
+  stroke: var(--color-texto);
+  stroke-width: 3;
+}
+
+.sc-medidor-rotulo {
+  font-size: 11px;
+  fill: var(--color-texto);
+}
+
+.sc-medidor-extremo {
+  font-size: 10px;
+  fill: var(--color-texto-suave);
+}
+
+.sc-medidor-numero {
+  position: absolute;
+  right: 0;
+  bottom: 14%;
+  left: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--fuente-titulos);
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recta: un punto por campaña; al subir la cobertura se juntan (la transición se apaga con «menos movimiento») */
+.sc-recta {
+  position: relative;
+  width: 100%;
+  height: 5.5rem;
+  padding: 0 5rem;
+}
+
+.sc-recta-linea {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--color-borde-fuerte);
+}
+
+.sc-recta-puntos {
+  position: absolute;
+  inset: 0 5rem;
+}
+
+.sc-punto-con,
+.sc-punto-sin {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  transition: left 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sc-punto-con {
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  background-color: var(--color-con);
+  border: 2px solid var(--color-fondo);
+}
+
+.sc-punto-sin {
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid var(--color-sin);
+}
+
+.sc-punto-etiqueta {
+  position: absolute;
+  bottom: 22px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--color-texto);
+}
+
+/* «Mejor» se escribe debajo de la recta y «Peor» arriba: si los dos puntos están cerca, las etiquetas no se pisan */
+.sc-punto-mejor .sc-punto-etiqueta {
+  top: 22px;
+  bottom: auto;
+}
+
+.sc-punto-izq .sc-punto-etiqueta {
+  right: -2px;
+}
+
+.sc-punto-der .sc-punto-etiqueta {
+  left: -2px;
+}
+
+.sc-recta-extremos {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-texto-suave);
+}
+
+.sc-recta-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}
+
+.sc-muestra-punto {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background-color: var(--color-con);
+  vertical-align: -1px;
+}
+
+.sc-muestra-sin {
+  background-color: transparent;
+  border: 2px solid var(--color-sin);
+}
+
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   /* Vuelve a definir los colores del tema: aunque la pantalla sea oscura, el papel es blanco */
@@ -2427,6 +2729,30 @@ output {
     padding-left: 14pt;
   }
 
+  /* Silos, medidor y recta: sin movimiento, a pleno y con los colores del papel; lo que entra con scroll se ve entero */
+  [data-entrada] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .sc-visual {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8pt;
+  }
+
+  .sc-visual * {
+    transition: none !important;
+  }
+
+  /* Silos y medidor lado a lado; la recta de los seis años, a todo lo ancho debajo */
+  .sc-bloque-recta {
+    grid-column: 1 / -1;
+  }
+
+  .sc-visual-bloque {
+    gap: 4pt;
+  }
+
   /* Tarjetas, gráficos y tablas no se cortan entre dos hojas */
   .tarjeta,
   .mc-tarjeta,
@@ -2474,7 +2800,7 @@ output {
   .sc-grafico {
     width: 340px;
     max-width: 100%;
-    height: 250px;
+    height: 185px;
     overflow: hidden;
   }
 
@@ -2503,8 +2829,208 @@ output {
   }
 
   .pie {
-    margin-top: 10pt;
+    margin-top: 6pt;
     font-size: 8.5pt;
+  }
+
+  /* Informe compacto: entra en 2 o 3 hojas A4. Nada de blancos grandes, tarjetas en columnas y ningún título solo al pie de la hoja */
+  html,
+  body {
+    font-size: 9pt;
+    line-height: 1.3;
+  }
+
+  .sc-ok > * + * {
+    margin-top: 5pt;
+  }
+
+  .sc-seccion-res {
+    gap: 4pt;
+    margin-bottom: 0;
+  }
+
+  .sc-seccion-res > h3 {
+    font-size: 12pt;
+  }
+
+  .sc-mas-caja,
+  .sc-mas {
+    gap: 6pt;
+  }
+
+  h3,
+  h4,
+  caption,
+  summary,
+  .sc-titulo-grupo,
+  .grafico-encabezado,
+  .sc-impresion-cabecera {
+    break-after: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .sc-ayuda-paso,
+  .ayuda,
+  .sc-comparacion-frase {
+    margin: 0 0 3pt;
+    font-size: 9pt;
+    break-inside: avoid;
+  }
+
+  .sc-claves {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6pt;
+    break-inside: avoid;
+  }
+
+  .sc-claves-dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sc-claves-cuatro {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sc-clave {
+    gap: 2pt;
+  }
+
+  .sc-numero {
+    font-size: 15pt;
+  }
+
+  .sc-frase,
+  .sc-frase-grande {
+    font-size: 8.5pt;
+    line-height: 1.3;
+  }
+
+  .tarjeta {
+    padding: 5pt 7pt;
+  }
+
+  /* Los botones de proporción son para la pantalla: en papel la cobertura ya está en la tabla y en los silos */
+  .sc-simulador-filas {
+    display: none;
+  }
+
+  .sc-lista-calendario {
+    break-inside: avoid;
+  }
+
+  .sc-lista-calendario {
+    line-height: 1.35;
+  }
+
+  .sc-visual {
+    gap: 6pt;
+  }
+
+  .sc-silos {
+    gap: 0.5rem 1.5rem;
+    zoom: 0.72;
+  }
+
+  .sc-visual-grande {
+    font-size: 15pt;
+  }
+
+  .sc-recta {
+    height: 4.5rem;
+  }
+
+  /* Detalle: los gráficos de a dos por renglón y las tablas a lo ancho; los desplegables se imprimen abiertos y sin su rótulo de botón */
+  /* Sin grid: un grid cuyos elementos se cortan entre dos hojas puede superponerlos al imprimir */
+  .sc-mas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .sc-mas > * {
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  .sc-mas > .sc-plegable-grafico,
+  .sc-mas > .sc-comparacion {
+    flex: 0 0 calc(50% - 3pt);
+  }
+
+  .sc-avanzado {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .sc-plegable-grafico > summary {
+    display: none;
+  }
+
+  details::details-content {
+    content-visibility: visible;
+    display: contents;
+  }
+
+  .sc-plegable-grafico,
+  .sc-detalle-escenarios,
+  .sc-calendario-res,
+  .sc-lectura,
+  .sc-bloque-recta,
+  .sc-bloque-medidor,
+  .sc-bloque-silos {
+    break-inside: avoid;
+  }
+
+  .sc-detalle-escenarios {
+    margin-top: 6pt;
+  }
+
+  .sc-detalle-escenarios summary {
+    min-height: 0;
+    margin-bottom: 3pt;
+  }
+
+  .mc-tabla > thead > tr > th,
+  .mc-tabla > tbody > tr > th,
+  .mc-tabla > tbody > tr > td {
+    padding: 2pt 4pt;
+  }
+
+  .mc-tabla {
+    font-size: 8pt;
+  }
+
+  .sc-tabla caption {
+    padding: 0 0 2pt;
+  }
+
+  .sc-notas-precios {
+    margin: 4pt 0 0;
+    font-size: 8pt;
+  }
+
+  .sc-lectura h3 {
+    margin: 0 0 3pt;
+    font-size: 11pt;
+  }
+
+  .sc-lectura p {
+    margin: 0 0 3pt;
+  }
+
+  .sc-aviso {
+    padding: 4pt 8pt;
+    font-size: 8.5pt;
+  }
+
+  /* El link a «Datos y fuentes» no sirve en papel */
+  .pie-enlace {
+    display: none;
   }
 }
 

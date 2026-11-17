@@ -155,7 +155,8 @@
     return {
       cultivo: cultivo,
       campana: ultimo.campana,
-      rinde: ultimo.rindeEsperado / 10,
+      // Es el rinde que se muestra: qq/ha con un decimal (32,1) ÷ 10 = 3,21 t/ha, sin decimales ocultos que hagan que hectáreas × rinde no cierre.
+      rinde: Math.round(ultimo.rindeEsperado * 10) / 100,
       cd: ultimo.cd,
       cc: m.cosecha(ultimo.rindeEsperado, ultimo.tabla),
       gc: ultimo.gc,
@@ -198,6 +199,28 @@
     return { cultivo: cultivo, zona: zona, campanas: casos.length, desde: casos[0].campana, hasta: casos[casos.length - 1].campana,
       min: menor.rindeReal, max: mayor.rindeReal,
       origenMin: m.origen(menor, "rindeReal", datos), origenMax: m.origen(mayor, "rindeReal", datos) };
+  }
+
+  // Tope de plausibilidad del rinde (t/ha): 1,5 veces el mayor rinde real de esa zona y cultivo en las campañas de TESIS_DATOS (el mismo
+  // dato de la línea «rindió entre X y Y qq/ha»). Si los datos no traen rinde real de esa zona y cultivo, vale el límite general.
+  function topeRinde(datos, cultivo, zona) {
+    var h = rindeHistorico(datos, cultivo, zona);
+    if (!h) return { tn: LIMITES.rinde.max, qq: LIMITES.rinde.max * 10, maxHistoricoQq: null };
+    return { tn: h.max * 1.5 / 10, qq: h.max * 1.5, maxHistoricoQq: h.max };
+  }
+
+  function dec(n, d) { return n.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+  // Mensaje amable si el rinde (t/ha) no es plausible para el cultivo en la zona; null si está bien.
+  function revisarRinde(datos, cultivo, zona, tn) {
+    var nombre = cultivo.toLowerCase();
+    if (!esFinito(tn) || tn <= 0) return "El rinde de " + nombre + " tiene que ser mayor que 0.";
+    var t = topeRinde(datos, cultivo, zona);
+    if (tn > t.tn + 1e-9) {
+      return "Ese rinde de " + nombre + " parece demasiado alto para tu zona: el máximo que aceptamos es " + dec(t.qq, 1) + " qq/ha (" + dec(t.tn, 2) + " t/ha)" +
+        (t.maxHistoricoQq === null ? "" : ", 1,5 veces lo más que rindió " + nombre + " en la zona (" + dec(t.maxHistoricoQq, 1) + " qq/ha)") + ". Revisalo y probá de nuevo.";
+    }
+    return null;
   }
 
   function comisionPorDefecto(datos) {
@@ -285,6 +308,8 @@
         var m = revisarLimite(partes[0], c[partes[1]]);
         if (m) throw new Error(cultivo + ": " + m);
       });
+      var mr = revisarRinde(datos, cultivo, entrada.zona, c.rinde);
+      if (mr) throw new Error(mr);
       if (c.cc !== null && c.cc !== undefined) {
         var mcc = revisarLimite("cc", c.cc);
         if (mcc) throw new Error(cultivo + ": " + mcc);
@@ -447,6 +472,16 @@
   // Entradas como texto (lo que escribe el productor)
   // ---------------------------------------------------------------------------------------
 
+  var MENSAJE_HECTAREAS = "Escribí las hectáreas como un número entero de 0 a " + HECTAREAS_MAX_TOTAL.toLocaleString("es-AR") + " (por ejemplo 500 o 1.000).";
+
+  // Hectáreas escritas por el productor: entero de 0 a 1.000 (con o sin punto de miles). undefined si no sirve.
+  function leerHectareas(texto) {
+    var t = typeof texto === "number" ? String(texto) : typeof texto === "string" ? texto.trim() : "";
+    if (!/^\d+$/.test(t) && !/^[1-9]\d{0,2}(\.\d{3})+$/.test(t)) return undefined;
+    var n = Number(t.replace(/\./g, ""));
+    return n >= 0 && n <= LIMITES.hectareas.max ? n : undefined; // pasar de 1.000 en total lo avisa el tope de la campaña
+  }
+
   var ETIQUETAS = { ha: "Hectáreas", rinde: "Rinde esperado", cd: "Costos directos", cc: "Costo de cosecha", gc: "Gastos de comercialización",
     f27: "Precio futuro 2026/27", comision: "Comisión", v: "Valor de la tierra" };
 
@@ -466,7 +501,7 @@
         return undefined;
       }
       if (revisarLimite(limite, n * (escala || 1))) {
-        errores[clave] = escala ? "Tiene que ir de 0 a 100 (en %)." : "Tiene que ir " + mensajeDeLimite(limite) + ".";
+        errores[clave] = escala === 0.01 ? "Tiene que ir de 0 a 100 (en %)." : "Tiene que ir " + mensajeDeLimite(limite) + ".";
         return undefined;
       }
       return n * (escala || 1);
@@ -480,12 +515,18 @@
     var algunCultivo = false;
     claves.forEach(function (cultivo) {
       var t = textos.cultivos[cultivo];
-      var ha = numero(cultivo + ".ha", t.ha, "hectareas", 1, true);
-      if (ha !== undefined && ha > 0 && !/^\d+$/.test(String(t.ha).trim()) && !/^\d{1,3}(\.\d{3})+$/.test(String(t.ha).trim())) {
-        errores[cultivo + ".ha"] = "Las hectáreas son un número entero (por ejemplo 1500 o 1.500).";
-        ha = undefined;
+      var ha = leerHectareas(t.ha);
+      if (ha === undefined) errores[cultivo + ".ha"] = MENSAJE_HECTAREAS;
+      // El rinde se revisa contra lo plausible para esa zona y cultivo (mayor que 0 y hasta 1,5 veces el máximo real de la zona).
+      var rinde = leerDecimal(t.rinde);
+      if (rinde === null) {
+        errores[cultivo + ".rinde"] = "Escribí un número con coma decimal (por ejemplo 0,5): el punto sólo separa miles.";
+        rinde = undefined;
+      } else {
+        var msgRinde = revisarRinde(datos, cultivo, textos.zona, rinde);
+        if (msgRinde) { errores[cultivo + ".rinde"] = msgRinde; rinde = undefined; }
       }
-      var fila = { ha: ha, rinde: numero(cultivo + ".rinde", t.rinde, "rinde", 1, true), cd: numero(cultivo + ".cd", t.cd, "cd", 1, true),
+      var fila = { ha: ha, rinde: rinde, cd: numero(cultivo + ".cd", t.cd, "cd", 1, true),
         cc: numero(cultivo + ".cc", t.cc, "cc", 1, false), gc: numero(cultivo + ".gc", t.gc, "gc", 1, true),
         f27: numero(cultivo + ".f27", t.f27, "f27", 1, true) };
       if (fila.ha > 0) algunCultivo = true;
@@ -528,6 +569,9 @@
     porDefecto: porDefecto,
     valorTierraDe: valorTierraDe,
     rindeHistorico: rindeHistorico,
+    topeRinde: topeRinde,
+    revisarRinde: revisarRinde,
+    leerHectareas: leerHectareas,
     comisionPorDefecto: comisionPorDefecto,
     validar: validar,
     calcular: calcular,

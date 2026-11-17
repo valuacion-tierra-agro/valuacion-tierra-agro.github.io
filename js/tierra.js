@@ -128,6 +128,8 @@
     cont.appendChild(el("p", null, [v.elegidas.length === 1 ? "La zona " + v.elegidas[0].zona + " se valorizó " : "Las " + v.elegidas.length + " zonas elegidas se valorizaron en promedio ",
       num(l.promedio, "porcentaje", base().origenCalculado("promedio simple de las valorizaciones anuales compuestas de las zonas elegidas", origenes)),
       " por año entre " + anios(v.elegidas[0]) + "."]));
+    cont.appendChild(el("p", { "class": "ayuda" }, ["Promedio de la tesis, 8 zonas, 2020 a 2026: ",
+      num(raiz.TESIS_CIFRAS.valorizacionTierra.v * 100, "usd2", raiz.TESIS_CIFRAS.valorizacionTierra.o), " % por año."]));
     if (v.elegidas.length > 1) {
       cont.appendChild(el("p", null, ["La que más se valorizó fue " + l.mayor.zona + " (", num(l.mayor.valorizacion, "porcentaje", base().origenCalculado("valorización anual compuesta", l.mayor.origen)),
         " por año, de " + anios(l.mayor) + ") y la que menos, " + l.menor.zona + " (", num(l.menor.valorizacion, "porcentaje", base().origenCalculado("valorización anual compuesta", l.menor.origen)),
