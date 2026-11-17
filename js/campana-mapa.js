@@ -82,7 +82,7 @@
     function textoAviso(params) {
       var z = zonaDePunto(params.name);
       var partido = String(params.name).split(" · ");
-      if (!z) return "<strong>" + escapar(partido[0]) + "</strong><br>" + escapar(partido[1] || "") + "<br>Fuera de las 8 zonas de la tesis";
+      if (!z) return "<strong>" + escapar(partido[0]) + "</strong><br>" + escapar(partido[1] || "") + "<br>Fuera de las 8 zonas del simulador";
       var d = opc.detalle(z);
       var t = "<strong>" + escapar(z) + "</strong><br>" + escapar(d.provincia || partido[1] || "");
       if (ind.zonaDe[params.name]) t = "<strong>" + escapar(partido[0]) + "</strong> · " + escapar(z) + " (aproximada)<br>" + escapar(partido[1] || "");

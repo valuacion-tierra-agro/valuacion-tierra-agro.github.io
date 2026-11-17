@@ -42,12 +42,76 @@
   function base() { return raiz.TESIS_APP; }
   function C() { return raiz.TESIS_CAMPANA; }
   function el(e, a, c) { return base().el(e, a, c); }
-  function num(v, f, o) { return base().numero(v, f, o); }
+  // Explicaciones en simple de cada cifra (lo que muestra la ventanita «De dónde sale este número»). La clave es la fórmula
+  // técnica con la que se arma el origen (que sigue guardado en data-origen); el productor sólo ve la frase.
+  var ULTIMAS = "probando con los movimientos de precios de las últimas 6 campañas";
+  var EXPLICA_MB = "Lo que cobrás por la cosecha menos los costos (insumos y labores, cosecha y gastos de venta) y la comisión de los futuros.";
+  var EXPLICA = {
+    "Producción = Σ hectáreas × rinde esperado": "Tus hectáreas multiplicadas por el rinde esperado de cada cultivo.",
+    "Ingreso total = Σ hectáreas × Ȳ × P": "Las toneladas que esperás cosechar por el precio de venta: el del futuro en la parte que cubrís y el precio de cosecha estimado en el resto.",
+    "MB total = Σ hectáreas × MB por hectárea": EXPLICA_MB,
+    "MB total = Σ hectáreas × MB/ha": EXPLICA_MB,
+    "costos totales = ingreso − margen bruto − comisión": "La suma de tus costos: insumos y labores, cosecha y gastos de venta. Si no los cambiaste, son los de referencia de tu zona (revista Márgenes Agropecuarios).",
+    "COM = comisión × toneladas cubiertas × F27": "La comisión de operar futuros: 0,5 % del valor de las toneladas que cubrís.",
+    "R = MB total ÷ (hectáreas × V)": "Tu margen bruto dividido por lo que vale tu tierra (hectáreas por el valor de la hectárea).",
+    "valor de la tierra = hectáreas × V": "Tus hectáreas por el valor de la hectárea en tu zona (Compañía Argentina de Tierras, publicado en Márgenes Agropecuarios), salvo que lo hayas cambiado.",
+    "margen bruto ÷ ingreso bruto × 100": "Tu margen bruto dividido por tu ingreso bruto.",
+    "hectáreas totales": "La suma de las hectáreas que cargaste.",
+    "proporción de hectáreas del cultivo": "Las hectáreas de ese cultivo sobre el total que cargaste.",
+    "R mínimo de los 6 escenarios sin cubrir": "La rentabilidad más baja que tendrías sin cubrirte, " + ULTIMAS + ".",
+    "R máximo de los 6 escenarios sin cubrir": "La rentabilidad más alta que tendrías sin cubrirte, " + ULTIMAS + ".",
+    "R mínimo de los 6 escenarios con tu cobertura": "La rentabilidad más baja que tendrías con tu cobertura, " + ULTIMAS + ".",
+    "R máximo de los 6 escenarios con tu cobertura": "La rentabilidad más alta que tendrías con tu cobertura, " + ULTIMAS + ".",
+    "peor MB total de los 6 escenarios históricos": "El margen bruto más bajo que tendrías, " + ULTIMAS + ".",
+    "peor MB total": "El margen bruto más bajo que tendrías, " + ULTIMAS + ".",
+    "diferencia entre los peores MB totales": "Cuánto cambia tu peor resultado con la cobertura, comparado con tu peor resultado sin cubrirte.",
+    "diferencia de MB total contra no cubrirse": "Tu margen bruto esperado con la cobertura menos el que tendrías sin cubrirte.",
+    "diferencia entre el mejor y el peor MB total de los 6 escenarios": "La distancia entre tu mejor y tu peor resultado, " + ULTIMAS + ".",
+    "diferencia entre el mejor y el peor MB total sin cubrir": "La distancia entre tu mejor y tu peor resultado sin cubrirte, " + ULTIMAS + ".",
+    "reducción del riesgo = 1 − desvío de R con tu cobertura ÷ desvío de R sin cubrir, en los 6 escenarios históricos": "Cuánto menos varía tu rentabilidad de un año a otro con la cobertura que sin cubrirte, " + ULTIMAS + ".",
+    "toneladas cubiertas = Σ hectáreas × rinde × proporción cubierta": "Hectáreas por rinde por la parte que cubrís de cada cultivo.",
+    "toneladas cubiertas = hectáreas × rinde × proporción cubierta": "Hectáreas por rinde por la parte que cubrís de ese cultivo.",
+    "toneladas cubiertas": "Hectáreas por rinde por la parte cubierta.",
+    "diferencia de MB por hectárea entre cubrir todo y no cubrir": "El margen por hectárea cubriendo toda la cosecha menos el margen por hectárea sin cubrir nada.",
+    "P = h·(F27 + base) + (1 − h)·spot proyectado": "El precio del futuro en la parte que cubrís y el precio de cosecha estimado en el resto.",
+    "promedio de R en los 6 escenarios": "El promedio de tu rentabilidad, " + ULTIMAS + ".",
+    "desvío muestral (n − 1) de R": "Cuánto varía tu rentabilidad de un año a otro (más bajo = más previsible).",
+    "desvío de R sin cubrir": "Cuánto varía tu rentabilidad de un año a otro sin cubrirte (más bajo = más previsible).",
+    "desvío de R cubierto": "Cuánto varía tu rentabilidad de un año a otro cubriendo toda la cosecha (más bajo = más previsible).",
+    "R media ÷ desvío de R": "La rentabilidad promedio dividida por cuánto varía: más alto es mejor.",
+    "mínimo de R": "La rentabilidad más baja, " + ULTIMAS + ".",
+    "máximo de R": "La rentabilidad más alta, " + ULTIMAS + ".",
+    "R con la sorpresa de precio de esa campaña aplicada al spot proyectado (sin cubrir) y al F27 (cubierto)": "La rentabilidad que tendrías si los precios se movieran entre la siembra y la cosecha como en esa campaña.",
+    "MB/ha medio sin cubrir": "El margen promedio por hectárea sin cubrirte, " + ULTIMAS + ".",
+    "MB/ha medio cubierto": "El margen promedio por hectárea cubriendo toda la cosecha, " + ULTIMAS + ".",
+    "diferencia de MB/ha medio entre 0 % y 100 % cubierto": "La diferencia entre el margen promedio por hectárea cubriendo todo y sin cubrir nada.",
+    "peor MB/ha sin cubrir": "El margen por hectárea más bajo sin cubrirte, " + ULTIMAS + ".",
+    "peor MB/ha cubierto": "El margen por hectárea más bajo cubriendo toda la cosecha, " + ULTIMAS + ".",
+    "diferencia entre los peores MB/ha": "La diferencia entre el peor margen por hectárea cubriendo todo y sin cubrir nada."
+  };
+  var EXPLICA_GENERAL = "Lo calculamos con los datos que cargaste y con los precios y costos de referencia de tu zona.";
+
+  // De un origen técnico («fórmula — parte de: …») a la frase en simple que ve el productor.
+  function explicar(origen) {
+    if (typeof origen !== "string" || origen === "") return null;
+    var corte = origen.indexOf(" — parte de: ");
+    if (corte < 0) return origen.indexOf(" › ") >= 0 ? "Es un dato de referencia de tu zona." : origen;
+    var formula = origen.slice(0, corte);
+    if (formula === TEXTO_FORMULA_MB) return EXPLICA_MB;
+    if (EXPLICA[formula]) return EXPLICA[formula];
+    var m = /^MB total del escenario (\S+)( (con|sin) cobertura)?$/.exec(formula);
+    if (m) return "El margen bruto que tendrías esta campaña si los precios se movieran entre la siembra y la cosecha como en " + m[1]
+      + (m[3] === "sin" ? ", sin cubrirte." : m[3] === "con" ? ", con tu cobertura." : ".");
+    return EXPLICA_GENERAL;
+  }
+
+  // explica (opcional): la frase en simple de esa cifra; si no viene, se deduce del origen.
+  function num(v, f, o, explica) { return base().numero(v, f, o, { explica: explica || explicar(o) }); }
   function fm() { return base().formato; }
   function V() { return raiz.TESIS_VISUAL || null; }
   // Número grande que cuenta hasta su valor (si falta countUp.js o se pidió menos movimiento, es el mismo número, quieto).
-  function numA(clave, valor, formato, origen) {
-    var nodo = num(valor, formato, origen);
+  function numA(clave, valor, formato, origen, explica) {
+    var nodo = num(valor, formato, origen, explica);
     return V() ? V().contar(nodo, clave, valor, function (n) { return fm().aplicar(formato, n); }) : nodo;
   }
 
@@ -248,20 +312,14 @@
 
   function montarPasoZona(cont) {
     cont.appendChild(el("h3", null, "¿En qué zona está tu campo?"));
-    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Elegí la zona más parecida a la tuya. De ella tomamos los rindes, los costos y el valor de la tierra de referencia. Las zonas son las 8 que estudia la tesis."));
+    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Elegí la zona más parecida a la tuya. De ella tomamos los rindes, los costos y el valor de la tierra de referencia."));
     nodos.tarjetasZona = {};
     var grilla = el("div", { "class": "sc-zonas", role: "group", "aria-label": "Zonas" });
     C().zonas().forEach(function (z, i) { nodos.tarjetasZona[z] = nodoDeZona(z, i); grilla.appendChild(nodos.tarjetasZona[z]); });
     if (raiz.TESIS_MAPA && raiz.TESIS_MAPA_UI) {
       var mapaNodo = el("div", { "class": "sc-mapa-ec", "aria-hidden": "true" });
-      cont.appendChild(el("figure", { "class": "sc-mapa" }, [
-        mapaNodo,
-        el("figcaption", { "class": "sc-mapa-pie" }, [
-          el("strong", null, "Regiones aproximadas:"),
-          " cada partido se asigna a la zona de la tesis más cercana dentro de su provincia. Los partidos de color más fuerte son los de referencia de la tesis. Tocá una región o elegila en la lista; lo gris no pertenece a ninguna zona.",
-          el("small", { "class": "sc-mapa-credito" }, raiz.TESIS_MAPA.atribucion)
-        ])
-      ]));
+      // Sin pie de mapa: la atribución de los límites (IGN / georef-ar, CC BY 4.0) está en «Datos y fuentes».
+      cont.appendChild(el("figure", { "class": "sc-mapa" }, [mapaNodo]));
       nodos.mapa = raiz.TESIS_MAPA_UI.montar({ nodo: mapaNodo, zonas: C().zonas(), detalle: C().detalleDeZona, alElegir: elegirZona, elegida: function () { return estado.zona; } });
     }
     cont.appendChild(grilla);
@@ -269,11 +327,9 @@
 
   function montarPasoCultivos(cont) {
     cont.appendChild(el("h3", null, "¿Qué sembrás?"));
-    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Tocá los cultivos de esta campaña (los que la tesis tiene para tu zona) y escribí cuántas hectáreas le dedicás a cada uno."));
-    cont.appendChild(el("p", { "class": "sc-nota sc-tope-ha", id: "sc-tope-ha" }, "Este simulador está pensado para pequeños y medianos productores: campos de hasta " + fmMiles(C().HECTAREAS_MAX_TOTAL) + " hectáreas en total, el tamaño de productor que estudia la tesis."));
+    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Tocá los cultivos de esta campaña y escribí cuántas hectáreas le dedicás a cada uno."));
     nodos.contadorHa = el("p", { "class": "sc-nota sc-contador-ha", id: "sc-contador-ha", "aria-live": "polite" });
     cont.appendChild(nodos.contadorHa);
-    cont.appendChild(el("p", { "class": "sc-nota sc-explica-fechas", id: "sc-explica-fechas" }, "Usamos las fechas típicas de cada cultivo en la Región Pampeana, las mismas de la tesis. Cubrirte es vender hoy un contrato que vence cuando cosechás. Así, el precio que fijás hoy es el que vas a cobrar en ese momento."));
     nodos.chips = {};
     var fila = el("div", { "class": "sc-chips", role: "group", "aria-label": "Cultivos" });
     C().CULTIVOS.forEach(function (cultivo) {
@@ -292,11 +348,9 @@
     C().CULTIVOS.forEach(function (cultivo) {
       var campoHa = crearCampo(idCampo(cultivo, "ha"), "Hectáreas de " + cultivo.toLowerCase(), "ha", function (valor) { estado.textos[cultivo].ha = valor; pintarContadorHa(); pintarExcedidoHa(); revalidarSiHayError(); }, { entero: true });
       nodos.campos[cultivo] = { ha: campoHa };
-      var nota = el("p", { "class": "sc-nota", id: idCampo(cultivo, "calendario-nota") });
+      var nota = el("p", { "class": "sc-nota sc-fechas-cultivo", id: idCampo(cultivo, "calendario-nota") });
       nodos.calendario[cultivo] = { nota: nota };
-      var cal = el("div", { "class": "sc-calendario-carga" }, [
-        el("p", { "class": "sc-titulo-grupo" }, "Fechas de la tesis para " + cultivo.toLowerCase()),
-        nota]);
+      var cal = el("div", { "class": "sc-calendario-carga" }, [nota]);
       var bloque = el("fieldset", { "class": "sc-cultivo", "data-cultivo": cultivo }, [el("legend", null, cultivo), campoHa.contenedor, cal]);
       nodos.bloquesHa[cultivo] = bloque;
       cont.appendChild(bloque);
@@ -316,7 +370,7 @@
     return /^\d+$/.test(t) ? Number(t) : /^\d{1,3}(\.\d{3})+$/.test(t) ? Number(t.replace(/\./g, "")) : 0;
   }
 
-  // Nota bajo las hectáreas de un cultivo: cuánto puede poner sin pasar el tope total de la tesis (1.000 ha).
+  // Nota bajo las hectáreas de un cultivo: cuánto puede poner sin pasar el tope total (1.000 ha).
   function notaHectareas(c) {
     var tope = C().HECTAREAS_MAX_TOTAL, total = hectareasCargadas();
     var libre = Math.max(0, tope - (total - haDe(c)));
@@ -347,12 +401,12 @@
     nodos.contadorHa.setAttribute("data-excedido", n > tope ? "true" : "false");
   }
 
-  // Fechas fijas de la tesis de un cultivo (sólo lectura): siembra, cosecha y el contrato que corresponde.
+  // Fechas fijas de un cultivo (sólo lectura): mes de siembra y mes de cosecha. El contrato de futuros se nombra recién en el informe.
   function pintarCalendario(cultivo) {
     var n = nodos.calendario[cultivo];
     if (!n || !estado.zona) return;
-    var f = futuroDe(cultivo), cal = C().CALENDARIO[cultivo];
-    n.nota.textContent = "Siembra en " + textoMes(cal.siembra) + ", cosecha en " + textoMes(cal.cosecha) + ". Contrato " + f.contrato + ", que vence en " + textoMes(f.mesUsado) + " de 2027.";
+    var cal = C().CALENDARIO[cultivo];
+    n.nota.textContent = "Siembra: " + textoMes(cal.siembra) + " → Cosecha: " + textoMes(cal.cosecha);
   }
 
   function montarPasoRinde(cont) {
@@ -410,19 +464,25 @@
     nodos.campos[cultivo].rinde.input.value = estado.rindeQq[cultivo];
   }
 
+  // «el trigo», «la soja», «el maíz».
+  function conArticulo(cultivo) { return (cultivo === "Soja" ? "la " : "el ") + cultivo.toLowerCase(); }
+
   // Referencia de la zona y, si los datos la tienen, la línea histórica del rinde real (sale de TESIS_DATOS: nada inventado).
   function pintarReferenciaRinde(cultivo) {
     var n = nodos.rinde[cultivo];
     var d = estado.defs[cultivo];
     base().vaciar(n.ref);
     n.ref.appendChild(raiz.document.createTextNode("Rinde típico de tu zona (campaña " + d.campana + "): "));
-    n.ref.appendChild(el("strong", null, [num(d.rinde * 10, "rinde", d.origen.rinde), " qq/ha"]));
+    n.ref.appendChild(el("strong", null, [num(d.rinde * 10, "rinde", d.origen.rinde,
+      "Es el rinde de referencia de " + cultivo.toLowerCase() + " en tu zona para la campaña " + d.campana + ", según la revista Márgenes Agropecuarios."), " qq/ha"]));
     n.ref.appendChild(el("small", { "class": "sc-rinde-t" }, " (" + coma(d.rinde, 2) + " t/ha)"));
     base().vaciar(n.hist);
     var h = C().rindeHistorico(null, cultivo, estado.zona);
     n.hist.hidden = !h;
     if (!h) return;
-    [ "En las últimas " + h.campanas + " campañas, " + cultivo.toLowerCase() + " en tu zona rindió entre ", num(h.min, "rinde", h.origenMin), " y ", num(h.max, "rinde", h.origenMax), " qq/ha." ]
+    [ "En las últimas " + h.campanas + " campañas, " + cultivo.toLowerCase() + " en tu zona rindió entre ",
+      num(h.min, "rinde", h.origenMin, "El rinde más bajo que tuvo " + conArticulo(cultivo) + " en tu zona en las últimas " + h.campanas + " campañas."), " y ",
+      num(h.max, "rinde", h.origenMax, "El rinde más alto que tuvo " + conArticulo(cultivo) + " en tu zona en las últimas " + h.campanas + " campañas."), " qq/ha." ]
       .forEach(function (p) { n.hist.appendChild(typeof p === "string" ? raiz.document.createTextNode(p) : p); });
   }
 
@@ -447,17 +507,22 @@
     cont.appendChild(fila);
     // Un desplegable por cultivo (sólo se ven los de los cultivos elegidos): «No lo cubro», 25, 50, 75 o 100 %.
     nodos.selectH = {};
+    nodos.notasH = {};
     nodos.camposH = {};
     var hijosH = [el("p", { "class": "sc-nota" }, "Elegí qué parte de la cosecha de cada cultivo cubrís (la proporción de las toneladas que esperás cosechar que vendés hoy a futuro).")];
     C().CULTIVOS.forEach(function (cultivo) {
       var sel = el("select", { id: idCampo(cultivo, "h") },
         [el("option", { value: "0" }, "No lo cubro")].concat(PROPORCIONES_SI.map(function (h) { return el("option", { value: String(Math.round(h * 100)) }, pct(h)); })));
-      sel.addEventListener("change", function () { estado.h[cultivo] = Number(sel.value) / 100; estado.hVer = hDe(estado.h); });
-      var campo = el("div", { "class": "sc-campo", "data-cultivo": cultivo }, [el("label", { "for": idCampo(cultivo, "h") }, "¿Qué parte de tu " + cultivo.toLowerCase() + " cubrís?"), sel]);
+      sel.addEventListener("change", function () { estado.h[cultivo] = Number(sel.value) / 100; estado.hVer = hDe(estado.h); pintarToneladasH(); });
+      var notaT = el("p", { "class": "sc-nota sc-toneladas-h", id: idCampo(cultivo, "h-toneladas"), "aria-live": "polite" });
+      var campo = el("div", { "class": "sc-campo", "data-cultivo": cultivo }, [el("label", { "for": idCampo(cultivo, "h") }, "¿Qué parte de tu " + cultivo.toLowerCase() + " cubrís?"), sel, notaT]);
+      nodos.notasH[cultivo] = notaT;
       nodos.selectH[cultivo] = sel;
       nodos.camposH[cultivo] = campo;
       hijosH.push(campo);
     });
+    nodos.totalH = el("p", { "class": "sc-nota sc-toneladas-total", id: "sc-h-toneladas-total", "aria-live": "polite" });
+    hijosH.push(nodos.totalH);
     nodos.bloqueH = el("div", { "class": "sc-bloque-h", id: "sc-bloque-h" }, hijosH);
     cont.appendChild(nodos.bloqueH);
     nodos.avisoDescubierto = el("p", { "class": "sc-aviso-descubierto", id: "sc-aviso-descubierto", role: "status" }, [el("strong", null, "Estás descubierto:"), " vas a cobrar el precio que haya el día de la cosecha."]);
@@ -470,7 +535,7 @@
     nodos.v = crearCampo("sc-v", "Valor de la tierra", "USD/ha", function (valor) { estado.v = valor; revalidarSiHayError(); });
     nodos.bloquesAvanzados = {};
     var detalles = el("details", { "class": "sc-avanzado", id: "sc-avanzadas" }, [el("summary", null, "Opciones avanzadas"),
-      el("p", { "class": "sc-nota" }, "Costos directos, costo de cosecha, gastos de comercialización y valor de la tierra. Por defecto, los últimos de tu zona según la tesis. La comisión de la cobertura es fija: 0,5 % del valor del contrato, como en la tesis.")]);
+      el("p", { "class": "sc-nota" }, "Costos directos, costo de cosecha, gastos de comercialización y valor de la tierra. Por defecto, los últimos de tu zona. La comisión de la cobertura es fija: 0,5 % del valor del contrato.")]);
     C().CULTIVOS.forEach(function (cultivo) {
       var bloque = el("fieldset", { "class": "sc-cultivo", "data-cultivo": cultivo }, [el("legend", null, cultivo)]);
       ["cd", "cc", "gc"].forEach(function (campo) {
@@ -495,8 +560,30 @@
     nodos.nombreCampo = campoNombre;
     nodos.nombrePersona = campoPersona;
     cont.appendChild(el("div", { "class": "sc-personalizar" }, [el("p", { "class": "sc-titulo-grupo" }, "Para personalizar tu informe"),
-      el("p", { "class": "sc-nota" }, "Aparecen en el encabezado del informe y de la hoja impresa. Se guardan sólo en este navegador: no van en el link para compartir ni salen de tu computadora."),
       campoNombre.contenedor, campoPersona.contenedor]));
+  }
+
+  // Toneladas que esperás cosechar de un cultivo con lo cargado hasta ahora (hectáreas × rinde), o null si todavía falta algún dato.
+  function toneladasEsperadas(c) {
+    var ha = haDe(c), rinde = C().leerDecimal(estado.textos[c] ? estado.textos[c].rinde : "");
+    return ha > 0 && rinde !== null && rinde > 0 ? ha * rinde : null;
+  }
+
+  // Debajo de cada porcentaje del paso 4: cuántas toneladas quedan cubiertas, y el total entre todos los cultivos.
+  function pintarToneladasH() {
+    if (!nodos.notasH || !estado) return;
+    var cubiertas = 0, esperadas = 0, completo = estado.cultivos.length > 0;
+    estado.cultivos.forEach(function (c) {
+      var nota = nodos.notasH[c], t = toneladasEsperadas(c), h = estado.h[c] || 0;
+      if (!nota) return;
+      if (t === null) { nota.textContent = ""; completo = false; return; }
+      cubiertas += t * h; esperadas += t;
+      nota.textContent = h > 0
+        ? "Cubrís " + fm().entero(t * h) + " t de las " + fm().entero(t) + " t de " + c.toLowerCase() + " que esperás cosechar."
+        : "No cubrís nada de las " + fm().entero(t) + " t de " + c.toLowerCase() + " que esperás cosechar.";
+    });
+    nodos.totalH.hidden = !(completo && estado.cultivos.length > 1);
+    nodos.totalH.textContent = completo ? "En total cubrís " + fm().entero(cubiertas) + " t de las " + fm().entero(esperadas) + " t que esperás cosechar." : "";
   }
 
   function sincronizarFuturos() {
@@ -509,6 +596,7 @@
       nodos.camposH[c].hidden = estado.cultivos.indexOf(c) < 0;
       nodos.selectH[c].value = String(Math.round((estado.h[c] || 0) * 100));
     });
+    pintarToneladasH();
   }
 
   function marcarError(campoNodos, mensaje) {
@@ -518,10 +606,10 @@
   }
 
   // Línea de debajo de cada campo: el valor por defecto con su origen, o «supuesto del usuario».
-  function pintarNota(campoNodos, tocado, valorDef, formato, origen, prefijoSinTocar, textoExtra) {
+  function pintarNota(campoNodos, tocado, valorDef, formato, origen, prefijoSinTocar, textoExtra, explicaDef) {
     base().vaciar(campoNodos.nota);
-    var partes = [tocado ? "Supuesto del usuario · por defecto: " : (prefijoSinTocar || "Por defecto: ")];
-    if (valorDef !== null) partes.push(num(valorDef, formato, origen));
+    var partes = [tocado ? "Lo cambiaste vos · por defecto: " : (prefijoSinTocar || "Por defecto: ")];
+    if (valorDef !== null) partes.push(num(valorDef, formato, origen, explicaDef));
     if (textoExtra) partes.push(textoExtra);
     partes.forEach(function (p) { campoNodos.nota.appendChild(typeof p === "string" ? raiz.document.createTextNode(p) : p); });
   }
@@ -578,11 +666,14 @@
       nodos.campos[c].rinde.nota.textContent = tn === null ? "Escribilo con coma decimal, por ejemplo 32,7." : "Equivale a " + coma(tn, 2) + " t/ha (10 qq = 1 t).";
       ["cd", "cc", "gc"].forEach(function (campo) {
         pintarNota(nodos.campos[c][campo], tocadoCampo(c, campo), valorPorDefecto(c, campo), FORMATO_NOTA[campo], d.origen[campo === "cc" ? "cc" : campo],
-          campo === "cc" ? "Por defecto (tabla de la tesis al rinde elegido): " : "Por defecto (" + d.campana + "): ");
+          campo === "cc" ? "Por defecto (según el rinde elegido): " : "Por defecto (" + d.campana + "): ", null,
+          "Es el valor de referencia de tu zona, según la revista Márgenes Agropecuarios.");
       });
       pintarCalendario(c);
     });
-    pintarNota(nodos.v, estado.v !== coma(estado.vDef.v, 0), estado.vDef.v, "usd", estado.vDef.origen, "Por defecto (" + estado.vDef.campana + "): ");
+    pintarNota(nodos.v, estado.v !== coma(estado.vDef.v, 0), estado.vDef.v, "usd", estado.vDef.origen, "Por defecto (" + estado.vDef.campana + "): ", null,
+      "Es el valor de referencia de la hectárea en tu zona (Compañía Argentina de Tierras, publicado en Márgenes Agropecuarios).");
+    pintarToneladasH();
   }
 
   function sincronizarTodo() {
@@ -685,9 +776,9 @@
     nodos.siguiente.addEventListener("click", siguiente);
     nodos.ver.addEventListener("click", verResultados);
     var navegacionPasos = el("div", { "class": "sc-nav-pasos" }, [nodos.atras, nodos.siguiente, nodos.ver]);
-    var enlace = el("p", { "class": "sc-enlace-fuentes" }, [el("a", { href: "#datos-y-fuentes" }, "Datos y fuentes de la tesis")]);
+    var enlace = el("p", { "class": "sc-enlace-fuentes" }, [el("a", { href: "#datos-y-fuentes" }, "Datos y fuentes")]);
     nodos.asistente = el("div", { "class": "sc-asistente sc-entradas tarjeta", id: "sc-asistente" }, [
-      el("p", { "class": "mc-intro" }, "Pensado para pequeños y medianos productores (hasta 1.000 ha). Cargá los datos de tu campaña en cuatro pasos cortos. Con eso te mostramos cuánto esperás ganar y qué te cambiaría cubrirte con futuros."),
+      el("p", { "class": "mc-intro" }, "Pensado para pequeños y medianos productores (hasta 1.000 ha). Cargá los datos de tu campaña en cuatro pasos cortos. Con eso te mostramos cuánto esperás ganar, cómo queda ese resultado frente al costo de oportunidad de tu tierra y qué te cambiaría cubrirte con futuros."),
       nodos.progresoTexto, nodos.progreso,
       nodos.pasos[1], nodos.pasos[2], nodos.pasos[3], nodos.pasos[4], nodos.errorPaso, navegacionPasos, enlace]);
     cont.appendChild(nodos.asistente);
@@ -783,7 +874,7 @@
 
   // Parte que va después de «#campana?»: zona, cultivos, hectáreas, rindes (en t/ha), cobertura de cada cultivo (h=50,0 en el orden de «c»; si es la
   // misma para todos, un solo número, como en los links viejos) (sin meses: las fechas son fijas). Los precios futuros y la
-  // comisión no van: salen de la tabla interna de cotizaciones y de la comisión fija de la tesis.
+  // comisión no van: salen de la tabla interna de cotizaciones y de la comisión fija.
   function armarQuery(e) {
     var enc = encodeURIComponent;
     var lista = function (campo, f) { return e.cultivos.map(function (c) { return enc(f(String(e.textos[c][campo]).trim())); }).join(","); };
@@ -863,7 +954,7 @@
       q.c.split(",").forEach(function (crudo, i) {
         var c = decodificar(crudo);
         if (c !== null && C().CULTIVOS.indexOf(c) >= 0 && disponibles.indexOf(c) >= 0 && elegidos.indexOf(c) < 0) { elegidos.push(c); posicion[c] = i; }
-        else if (c !== null && C().CULTIVOS.indexOf(c) >= 0 && disponibles.indexOf(c) < 0) frase("Tu zona no tiene datos de " + c.toLowerCase() + " en la tesis; lo sacamos del escenario.");
+        else if (c !== null && C().CULTIVOS.indexOf(c) >= 0 && disponibles.indexOf(c) < 0) frase("Tu zona no tiene datos de " + c.toLowerCase() + "; lo sacamos del escenario.");
         else if (c !== null && C().CULTIVOS.indexOf(c) >= 0) { /* repetido: vale el primero */ }
         else nota("el cultivo «" + textoParaAviso(c === null ? crudo : c) + "»");
       });
@@ -1023,7 +1114,7 @@
   }
   var TEXTO_FORMULA_MB = "MB = Ȳ·(P − GC) − CD − CC − COM; P = h·(F27 + base) + (1 − h)·spot proyectado; COM = comisión·Ȳ·F27·h";
 
-  // Origen de una cifra calculada: sus fórmulas, las celdas de la tesis de las que parte y qué es supuesto del usuario.
+  // Origen técnico de una cifra calculada (queda en data-origen, para auditar): sus fórmulas, las celdas de las que parte y qué cargó el usuario.
   function origenDe(formula, vista, usa) {
     var origs = [];
     var notas = [];
@@ -1044,7 +1135,7 @@
         notas.push("F27 " + c + ": " + (f.esReferencia ? C().ROTULO_REFERENCIA : f.contrato + " al " + f.fecha + ", " + f.fuente));
       });
     }
-    if (usa.spot) notas.push("spot proyectado = supuesto del grupo (no es un pronóstico)");
+    if (usa.spot) notas.push("spot proyectado = estimación (no es un pronóstico)");
     return base().origenCalculado(formula, origs, null, notas);
   }
 
@@ -1097,16 +1188,19 @@
   function pintarSabemos(v) {
     var cont = nodos.sabemos;
     base().vaciar(cont);
-    var u = v.resultados[0];
+    // Con la cobertura que se está mirando (la misma del titular y de la cascada): antes iba siempre «sin cubrir» y no coincidía.
+    var hp = hDe(estado.hVer, v.nombres);
+    var cubre = hayCobertura(hp);
+    var u = C().evaluar(v, hp).resultado;
     var tn = v.nombres.reduce(function (s, c) { return s + v.cultivos[c].ha * v.cultivos[c].rinde; }, 0);
     var porCultivo = v.nombres.map(function (c) { return c + " " + fm().entero(v.cultivos[c].ha * v.cultivos[c].rinde) + " t"; }).join(" · ");
     var o = function (f) { return origenDe(f, v, TODO); };
     cont.appendChild(el("h3", null, "Lo que ya sabemos con tus datos"));
-    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Es lo que esperás para la campaña 2026/27 si vendés toda la cosecha a precio de cosecha."));
+    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Es lo que esperás para la campaña 2026/27" + (cubre ? " con la cobertura que elegiste." : " si vendés toda la cosecha al precio de cosecha.")));
     cont.appendChild(el("div", { "class": "sc-claves" }, [
       cifraClave("Producción esperada", numA("sabemos-produccion", tn, "entero", o("Producción = Σ hectáreas × rinde esperado")), "toneladas", "Lo que esperás cosechar: hectáreas por rinde. " + porCultivo + "."),
       cifraClave("Ingreso bruto estimado", numA("sabemos-ingreso", u.ingresoTotal, "usd", o("Ingreso total = Σ hectáreas × Ȳ × P")), "USD", "Lo que cobrarías por la cosecha, antes de pagar nada."),
-      cifraClave("Margen bruto estimado", numA("sabemos-margen", u.mbTotal, "usd", o("MB total = Σ hectáreas × MB por hectárea")), "USD", "Lo que te queda después de pagar semillas, insumos y cosecha.", "sc-principal")
+      cifraClave("Margen bruto estimado", numA("sabemos-margen", u.mbTotal, "usd", o("MB total = Σ hectáreas × MB por hectárea")), "USD", cubre ? "Lo que te queda después de pagar semillas, insumos, cosecha y la comisión de los futuros." : "Lo que te queda después de pagar semillas, insumos y cosecha.", "sc-principal")
     ]));
   }
 
@@ -1132,12 +1226,12 @@
       cifraClave("Rentabilidad sobre tu tierra", numA("hoy-r", u.r, "porcentaje", o("R = MB total ÷ (hectáreas × V)")), "",
         "Lo que te deja el campo en un año, comparado con lo que vale tu tierra."),
       el("div", { "class": "tarjeta sc-clave" }, [
-        el("h4", null, "Tu riesgo, en palabras"),
-        el("p", { "class": "sc-frase sc-frase-grande" }, ["En un año como ", v.campanas[iFria], " tu resultado habría sido ",
-          num(totales[iFria], "usd", o("MB total del escenario " + v.campanas[iFria])), " USD; en uno como ", v.campanas[iCalida], ", ",
-          num(totales[iCalida], "usd", o("MB total del escenario " + v.campanas[iCalida])), " USD."]),
-        el("p", { "class": "sc-frase" }, "Son dos de los seis años que estudia la tesis. Muestran cuánto puede moverse tu resultado."
-          + (!cubre ? "" : " Con tu cobertura actual."))
+        el("h4", null, "Tu resultado según los precios"),
+        el("p", { "class": "sc-frase sc-frase-grande" }, [
+          el("span", { "class": "sc-renglon" }, ["Con precios como los de ", v.campanas[iFria], ": ", el("span", { "class": "sc-sin-corte" }, [num(totales[iFria], "usd", o("MB total del escenario " + v.campanas[iFria])), " USD"])]),
+          el("span", { "class": "sc-renglon" }, ["Con precios como los de ", v.campanas[iCalida], ": ", el("span", { "class": "sc-sin-corte" }, [num(totales[iCalida], "usd", o("MB total del escenario " + v.campanas[iCalida])), " USD"])])]),
+        el("p", { "class": "sc-frase" }, "Es el margen bruto que tendrías esta campaña si los precios se movieran como en esos años"
+          + (!cubre ? ", sin cubrirte." : ", con tu cobertura de hoy."))
       ])
     ]));
   }
@@ -1152,11 +1246,11 @@
       var m = C().CALENDARIO[c];
       return el("li", null, [el("strong", null, c + ": "), "siembra en " + textoMes(m.siembra) + ", cosecha en " + textoMes(m.cosecha) + ". Contrato " + f.contrato + "."]);
     });
-    cont.appendChild(el("p", { "class": "sc-titulo-grupo" }, "Las fechas de la tesis y el contrato que te corresponde"));
+    cont.appendChild(el("p", { "class": "sc-titulo-grupo" }, "El contrato de futuros que corresponde a cada cultivo"));
     cont.appendChild(el("ul", { "class": "sc-lista-calendario" }, items));
     var hayReferencia = v.nombres.some(function (c) { return futuroDe(c).esReferencia; });
     cont.appendChild(el("p", { "class": "sc-aviso", role: "note" }, hayReferencia
-      ? [el("strong", null, "Precio de referencia. "), "El precio futuro 2026/27 que usamos es el futuro de siembra 2025/26 de la tesis, no una cotización de hoy. Cuando el grupo consiga las cotizaciones reales se cargan en un único lugar y se actualiza todo."]
+      ? [el("strong", null, "Precio de referencia. "), "El precio futuro 2026/27 que usamos es el de la campaña 2025/26, no una cotización de hoy."]
       : "El precio futuro 2026/27 es la cotización del contrato que vence en tu mes de cosecha."));
   }
 
@@ -1193,7 +1287,7 @@
     var peorI = totalesSin.indexOf(Math.min.apply(null, totalesSin));
     var iFria = indiceDeCampana(v, CAMPANA_FRIA, peorI);
 
-    cont.appendChild(el("h3", null, "Nuestra propuesta: cubrir con futuros"));
+    cont.appendChild(el("h3", null, "Qué cambia si cubrís con futuros"));
     cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Cubrir es fijar hoy el precio de una parte de tu cosecha. Probá cuánto cubrir de cada cultivo y mirá qué cambia. "
       + (estado.usaFuturos ? "Arrancamos en lo que nos contaste: " + textoH(hDe(estado.h, v.nombres)) + "." : "Arrancamos sin cubrir, como hoy.")));
     cont.appendChild(el("p", { "class": "sc-ayuda-paso", "data-fuente-f27": "1" }, textoFuenteF27(v)));
@@ -1217,7 +1311,7 @@
       cifraClave("Toneladas cubiertas", numA("prop-toneladas", cob.toneladasCubiertas, "entero", o("toneladas cubiertas = Σ hectáreas × rinde × proporción cubierta")), "t",
         "De " + fm().entero(cob.toneladasProducidas) + " t que esperás cosechar."),
       cifraClave("Resultado esperado", numA("prop-esperado", cob.mbTotal, "usd", o(TEXTO_FORMULA_MB)), "USD", "Margen bruto con el precio proyectado."),
-      cifraClave("Peor caso", numA("prop-peor", cob.peorMbTotal, "usd", o("peor MB total de los 6 escenarios históricos")), "USD", "El peor de los seis años que estudia la tesis."),
+      cifraClave("Peor caso", numA("prop-peor", cob.peorMbTotal, "usd", o("peor MB total de los 6 escenarios históricos")), "USD", "El peor año de las últimas 6 campañas."),
       cifraClave("Costo de la comisión", numA("prop-comision", cob.comisionUsd, "usd", o("COM = comisión × toneladas cubiertas × F27")), "USD",
         "Comisión estimada de mercado: " + coma(v.comision * 100, 1) + " % del valor del contrato.")
     ]));
@@ -1239,7 +1333,7 @@
   // Impacto visual: silos, medidor de riesgo y línea de tiempo de los seis años (con los números de campana.js)
   // ---------------------------------------------------------------------------------------
 
-  // Umbral de la hipótesis de la tesis (Parametros › B9, 50 %).
+  // Marca del medidor: reducir el riesgo más del 50 % (Parametros › B9).
   function umbralHipotesis() {
     var d = raiz.TESIS_DATOS;
     var u = d && d.parametros && d.parametros.reduccionHipotesis ? d.parametros.reduccionHipotesis.v : 0.5;
@@ -1304,8 +1398,8 @@
         numeroNodo: reduccion === null ? texto("—") : numA("medidor", reduccion, "porcentaje", origenRed),
         colores: { texto: colorDe("color-texto", "#f4f4f4"), suave: colorDe("color-texto-suave", "#c6c6c6"), superficie: colorDe("color-superficie", "#262626"),
           fuente: colorDe("fuente-texto", "sans-serif"), alerta: colorDe("color-alerta", "#ff8389"), aviso: colorDe("color-aviso", "#f1c21b"), logro: colorDe("color-logro", "#42be65") },
-        aria: reduccion === null ? "Riesgo que sacás: no se puede calcular" : "Riesgo que sacás: " + Math.round(Math.max(0, reduccion) * 100) + " %. Marca del " + pct(umbral) + ": umbral de la hipótesis."
-          + (reduccion > umbral ? " Superás el umbral de la hipótesis." : "")
+        aria: reduccion === null ? "Riesgo que sacás: no se puede calcular" : "Riesgo que sacás: " + Math.round(Math.max(0, reduccion) * 100) + " %."
+          + (reduccion > umbral ? " Disminuís más del " + pct(umbral) + " del riesgo." : "")
       },
       linea: {
         campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: peor, mejor: mejor, peorSin: peorSin, mejorSin: mejorSin, min: min - margen, max: max + margen, impreso: imprimiendo,
@@ -1319,7 +1413,7 @@
           sobreAlerta: imprimiendo ? "#ffffff" : "#161616", sobreLogro: imprimiendo ? "#ffffff" : "#161616",
           sombra: imprimiendo ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)"
         },
-        aria: "Los seis años de la tesis aplicados a tu campaña. Peor: " + v.campanas[peor] + ", " + fm().usd(totalesCon[peor]) + " USD. Mejor: " + v.campanas[mejor] + ", " + fm().usd(totalesCon[mejor]) + " USD."
+        aria: "Tu campaña con los precios de las últimas 6 campañas. Peor: " + v.campanas[peor] + ", " + fm().usd(totalesCon[peor]) + " USD. Mejor: " + v.campanas[mejor] + ", " + fm().usd(totalesCon[mejor]) + " USD."
       }
     });
 
@@ -1333,11 +1427,11 @@
     // Con cobertura hay dos versiones de cada frase (data-ver): el selector «Sin cubrirte» / «Con tu cobertura» muestra una u otra.
     var version = function (padre, ver) { var s = el("span", cubre ? { "data-ver": ver } : null); padre.appendChild(s); return s; };
     base().vaciar(f.medidor);
-    var marca = " La marca del " + pct(umbral) + " es el umbral de la hipótesis de la tesis.";
+    var marca = "";
     var fc = version(f.medidor, "con");
-    if (reduccion === null) fc.appendChild(texto("No se puede calcular: sin cubrirte, tu rentabilidad no se mueve entre los seis años."));
+    if (reduccion === null) fc.appendChild(texto("No se puede calcular: sin cubrirte, tu rentabilidad no cambia entre las 6 campañas."));
     else if (!cubre) fc.appendChild(texto("Sin cubrirte no sacás riesgo. Con cobertura, el arco se llena según cuánto menos se mueve tu rentabilidad de un año a otro." + marca));
-    else if (reduccion < 0) fc.appendChild(texto("Con esta cobertura tu rentabilidad se mueve más que sin cubrirte entre los seis años." + marca));
+    else if (reduccion < 0) fc.appendChild(texto("Con esta cobertura tu rentabilidad se mueve más que sin cubrirte entre las 6 campañas." + marca));
     else {
       fc.appendChild(texto("Con tu cobertura, tu rentabilidad se mueve "));
       fc.appendChild(num(reduccion, "porcentaje", origenRed));
@@ -1391,6 +1485,7 @@
   function repintarCobertura() {
     if (!ultimaVista) return;
     if (V() && nodos.visual) V().reiniciarModo(nodos.visual);
+    pintarSabemos(ultimaVista);
     pintarPropuesta(ultimaVista);
     pintarFranja(ultimaVista);
     pintarDetalle(vistaVer());
@@ -1426,7 +1521,7 @@
     cont.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sc-tabla" }, [
       el("caption", null, "Qué cambia si cubrís la misma proporción en todos los cultivos"),
       el("thead", null, filaTabla([""].concat(C().PROPORCIONES.map(pct)), true)), el("tbody", null, filas)])));
-    cont.appendChild(el("p", { "class": "ayuda" }, "Desvío: cuánto se mueve tu rentabilidad de un año a otro (más bajo = más previsible). Sharpe adaptado: cuánta rentabilidad obtenés por cada punto de riesgo (más alto = mejor). El peor caso es el peor de los seis años de la tesis. No calculamos cantidad de contratos porque el tamaño del contrato no está en las fuentes de la tesis."));
+    cont.appendChild(el("p", { "class": "ayuda" }, "Desvío: cuánto se mueve tu rentabilidad de un año a otro (más bajo = más previsible). Sharpe adaptado: cuánta rentabilidad obtenés por cada punto de riesgo (más alto = mejor). El peor caso es el peor año de las últimas 6 campañas."));
   }
 
   function pintarDetalle(vv) {
@@ -1477,9 +1572,13 @@
     cont.appendChild(el("div", { "class": "tabla-contenedor" }, tabla));
     var notas = v.nombres.map(function (c) {
       var p = v.cultivos[c].precios;
-      return el("li", null, [c + ": spot proyectado = último Sc (", num(p.scUltimo, "usd2", p.origenSc[1]), ") × (1 + ", num(p.crecimientoAnual, "porcentaje", p.origenSc.join(" · ") + " — crecimiento anual compuesto: (Sc " + p.ultima + " ÷ Sc " + p.primera + ")^(1/5) − 1"),
-        ") = ", num(p.spotProyectado, "usd2", base().origenCalculado("último Sc × (1 + crecimiento anual compuesto)", p.origenSc, null, ["supuesto del grupo, no un pronóstico"])),
-        " USD/t; base esperada = promedio de (Sc − Fc) = ", num(p.base, "usd2", base().origenCalculado("promedio de (Sc − Fc) de las 6 campañas", p.origenBase)), " USD/t."]);
+      return el("li", null, [c + ": spot proyectado = último precio de cosecha (", num(p.scUltimo, "usd2", p.origenSc[1], "El precio disponible en el mes de cosecha de la campaña " + p.ultima + " (Bolsa de Comercio de Rosario)."),
+        " USD/t) con su variación anual promedio (", num(p.crecimientoAnual, "porcentaje", p.origenSc.join(" · ") + " — crecimiento anual compuesto: (Sc " + p.ultima + " ÷ Sc " + p.primera + ")^(1/5) − 1",
+          "Cuánto varió por año, en promedio, el precio de cosecha entre " + p.primera + " y " + p.ultima + "."),
+        ") = ", num(p.spotProyectado, "usd2", base().origenCalculado("último Sc × (1 + crecimiento anual compuesto)", p.origenSc, null, ["estimación, no un pronóstico"]),
+          "El último precio de cosecha, ajustado por lo que varió por año entre " + p.primera + " y " + p.ultima + ". Es una estimación, no un pronóstico."),
+        " USD/t. Diferencia habitual entre el precio de cosecha y el futuro al vencer: ", num(p.base, "usd2", base().origenCalculado("promedio de (Sc − Fc) de las 6 campañas", p.origenBase),
+          "El promedio, en las últimas 6 campañas, de la diferencia entre el precio de cosecha y el del futuro en el mes de cosecha."), " USD/t."]);
     });
     cont.appendChild(el("ul", { "class": "sc-notas-precios" }, notas));
   }
@@ -1501,8 +1600,8 @@
       return tr;
     });
     cont.appendChild(el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sc-tabla" }, [
-      el("caption", null, "Riesgo con los 6 escenarios históricos, por proporción cubierta"), el("thead", null, cab), el("tbody", null, filas)])));
-    cont.appendChild(el("p", { "class": "ayuda" }, "Sharpe adaptado: R media ÷ desvío de R entre los seis escenarios, sin tasa libre de riesgo. Si el desvío es 0, no se define (—). La fila marcada es la proporción que elegiste."));
+      el("caption", null, "Riesgo con los precios de las últimas 6 campañas, por proporción cubierta"), el("thead", null, cab), el("tbody", null, filas)])));
+    cont.appendChild(el("p", { "class": "ayuda" }, "Sharpe adaptado: R media ÷ desvío de R entre las 6 campañas, sin tasa libre de riesgo. Si el desvío es 0, no se define (—). La fila marcada es la proporción que elegiste."));
 
     // Detalle por campaña (R de cada escenario).
     var cabE = filaTabla(["Cubierto"].concat(v.campanas), true);
@@ -1510,9 +1609,9 @@
       return filaTabla([l.nombre].concat(l.esc.r.map(function (r) { return num(r, "porcentaje", o("R con la sorpresa de precio de esa campaña aplicada al spot proyectado (sin cubrir) y al F27 (cubierto)")); })));
     });
     nodos.plegablesTabla = [];
-    var detalleR = el("details", { "class": "sc-detalle-escenarios" }, [el("summary", null, "Ver R en cada uno de los seis escenarios"),
+    var detalleR = el("details", { "class": "sc-detalle-escenarios" }, [el("summary", null, "Ver la rentabilidad con los precios de cada campaña"),
       el("div", { "class": "tabla-contenedor" }, el("table", { "class": "mc-tabla sc-tabla" }, [el("thead", null, cabE), el("tbody", null, filasE)])),
-      el("p", { "class": "ayuda" }, "Cada escenario aplica la sorpresa de precio de una campaña de la tesis. Sin cubrir: P = spot proyectado × Sc ÷ Fs. Cubierto: P = F27 × (1 + (Sc − Fc) ÷ Fs). Mezcla: según la proporción cubierta.")]);
+      el("p", { "class": "ayuda" }, "Cada columna muestra la rentabilidad que tendrías esta campaña si los precios se movieran entre la siembra y la cosecha como en esa campaña.")]);
     nodos.plegablesTabla.push(detalleR);
     cont.appendChild(detalleR);
   }
@@ -1525,7 +1624,7 @@
     var u = function (x) { return Math.abs(x); };
     var verbo = l.resignaMbHa >= 0 ? "resigna" : "suma";
     var p1 = ["Con estos supuestos, cubrir el 100 % con futuros ", verbo, " ", num(u(l.resignaMbHa), "usd", o("diferencia de MB/ha medio entre 0 % y 100 % cubierto")),
-      " USD/ha en promedio de los seis escenarios históricos (de ", num(l.mediaMbHa0, "usd", o("MB/ha medio sin cubrir")), " a ", num(l.mediaMbHa100, "usd", o("MB/ha medio cubierto")), " USD/ha)",
+      " USD/ha en promedio con los precios de las últimas 6 campañas (de ", num(l.mediaMbHa0, "usd", o("MB/ha medio sin cubrir")), " a ", num(l.mediaMbHa100, "usd", o("MB/ha medio cubierto")), " USD/ha)",
       l.mejoraPeorMbHa >= 0 ? " y mejora el peor caso en " : " y empeora el peor caso en ", num(u(l.mejoraPeorMbHa), "usd", o("diferencia entre los peores MB/ha")), " USD/ha (de ",
       num(l.peorMbHa0, "usd", o("peor MB/ha sin cubrir")), " a ", num(l.peorMbHa100, "usd", o("peor MB/ha cubierto")), " USD/ha)."];
     var p2 = ["El desvío de R pasa de ", num(l.desvioR0, "porcentaje", o("desvío de R sin cubrir")), " sin cubrir a ", num(l.desvioR100, "porcentaje", o("desvío de R cubierto")),
@@ -1669,10 +1768,10 @@
       }), label: { show: true, color: txt.color, fontSize: chica + 1, fontWeight: 600, formatter: function (q) { return fm.usd(q.value); } } }]
     });
 
-    var series = [{ h: 0, nombre: "0 % cubierto", color: cSin }, { h: 1, nombre: "100 % cubierto", color: cCon }];
+    var series = [{ h: 0, nombre: "Sin cubrirte", color: cSin }, { h: 1, nombre: "Todo cubierto", color: cCon }];
     var uniformeG = hUniforme(v.hPorCultivo);
     if (uniformeG === null || (uniformeG > 0 && uniformeG < 1)) {
-      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu elección (por cultivo)" : Math.round(uniformeG * 100) + " % cubierto", color: cAcento, discontinua: true });
+      series.splice(1, 0, { escenario: v.escenarioUsuario, nombre: uniformeG === null ? "Tu cobertura" : Math.round(uniformeG * 100) + " % cubierto", color: cAcento, discontinua: true });
     }
     var peorEsc = v.escenarios[0].r.indexOf(Math.min.apply(null, v.escenarios[0].r));
     dibujar("escenarios", nodos.graficoEscenarios, {
@@ -1693,6 +1792,11 @@
         return o;
       })
     });
+  }
+
+  // «a», «a y b», «a, b y c».
+  function listaEnTexto(lista) {
+    return lista.length <= 1 ? String(lista[0] || "") : lista.slice(0, -1).join(", ") + " y " + lista[lista.length - 1];
   }
 
   function signoUsd(x) { return (x >= 0 ? "+" : "−") + fm().usd(Math.abs(x)); }
@@ -1732,18 +1836,32 @@
     var d = v.resultados[1].mbHa - v.resultados[0].mbHa;
     var mejores = v.nombres.filter(function (c) { return v.resultados[1].porCultivo[c].mbHa > v.resultados[0].porCultivo[c].mbHa; });
     h.futuro.conclusion.textContent = conclusionFuturo(v);
-    frase(h.futuro.titular, ["Con futuros fijás el precio hoy; el spot proyectado es un supuesto del grupo, no un pronóstico."]);
+    frase(h.futuro.titular, ["Con futuros fijás el precio hoy; el spot proyectado es una estimación, no un pronóstico."]);
+    // Los dos precios de cada cultivo (USD por tonelada): con ellos se entiende la diferencia de margen por hectárea del gráfico.
+    var precios = v.nombres.map(function (c) {
+      return c.toLowerCase() + ", futuro " + fm().usd(v.resultados[1].porCultivo[c].precio) + " y spot proyectado " + fm().usd(v.resultados[0].porCultivo[c].precio);
+    }).join("; ");
     frase(h.futuro.lectura, [d >= 0 ? "Cubriendo todo, tu margen por hectárea sube " : "Cubriendo todo, tu margen por hectárea baja ", num(Math.abs(d), "usd", o("diferencia de MB por hectárea entre cubrir todo y no cubrir")),
-      " USD" + (v.nombres.length > 1 ? "; en " + (mejores.length ? mejores.join(" y ").toLowerCase() + " el futuro rinde más que el spot." : "ningún cultivo el futuro rinde más que el spot.") : ".")]);
+      " USD" + (v.nombres.length > 1 ? "; en " + (mejores.length ? listaEnTexto(mejores).toLowerCase() + " el futuro deja más que el spot." : "ningún cultivo el futuro deja más que el spot.") : "."),
+      " Precios de venta usados (USD por tonelada): " + precios + ". El spot proyectado es el último precio de cosecha, ajustado por lo que varió por año entre 2020/21 y 2025/26."]);
 
     // Seis escenarios
     var rs0 = v.escenarios[0].r, rs = v.escenarioUsuario.r;
     var rango = function (r) { return [Math.min.apply(null, r), Math.max.apply(null, r)]; };
     var a = rango(rs0), b = rango(rs);
     var cubre = hayCobertura(v.hPorCultivo);
-    frase(h.escenarios.titular, ["Sin cubrirte, tu rentabilidad quedaría entre ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " y ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir")),
-      ", según cómo se muevan los precios" + (cubre ? "; cubriendo, entre " : "."), cubre ? num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")) : "", cubre ? " y " : "", cubre ? num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura")) : "", cubre ? "." : ""]);
-    frase(h.escenarios.lectura, ["Cada punto aplica a tu campo la sorpresa de precio de una campaña de la tesis (eje horizontal): cuanto más junto, menos riesgo."]);
+    var renglones = [el("span", { "class": "sc-rango-rotulo" }, "Rentabilidad de tu tierra, según cómo se muevan los precios"),
+      el("span", { "class": "sc-renglon" }, ["Sin cubrirte: entre ", num(a[0], "porcentaje", o("R mínimo de los 6 escenarios sin cubrir")), " y ", num(a[1], "porcentaje", o("R máximo de los 6 escenarios sin cubrir"))])];
+    if (cubre) renglones.push(el("span", { "class": "sc-renglon" }, ["Con tu cobertura: entre ", num(b[0], "porcentaje", o("R mínimo de los 6 escenarios con tu cobertura")), " y ", num(b[1], "porcentaje", o("R máximo de los 6 escenarios con tu cobertura"))]));
+    frase(h.escenarios.titular, renglones);
+    // En qué campañas convenía no cubrirse (el precio subió después de la siembra) y en cuáles la cobertura protegía (bajó).
+    var rs100 = v.escenarios[1].r;
+    var subio = v.campanas.filter(function (c, i) { return rs0[i] > rs100[i]; });
+    var bajo = v.campanas.filter(function (c, i) { return rs0[i] <= rs100[i]; });
+    frase(h.escenarios.lectura, ["Cada punto muestra la rentabilidad que tendrías esta campaña si los precios se movieran, entre la siembra y la cosecha, como en la campaña del eje horizontal."
+      + (subio.length ? " Con precios como los de " + listaEnTexto(subio) + ", que subieron después de la siembra, ganabas más sin cubrirte." : "")
+      + (bajo.length ? " Con precios como los de " + listaEnTexto(bajo) + ", que bajaron, la cobertura te protegía." : "")
+      + " La línea cubierta casi no se mueve: ese es el efecto de fijar el precio."]);
   }
 
   // Franja de resumen: una frase grande con las cifras que cuentan (margen esperado y cómo mejora el peor año al cubrirte).
@@ -1756,10 +1874,19 @@
     var cubre = hayCobertura(hp);
     var mejora = cob.peorMbTotal - sin.peorMbTotal;
     var o = function (f) { return origenDe(f, v, TODO); };
+    // Con cobertura: cuánto más (en %) te queda en un mal año de precios que sin cubrirte. Si sin cubrirte el mal año da pérdida,
+    // el porcentaje no dice nada: va la diferencia en USD.
+    var enPorcentaje = cubre && sin.peorMbTotal > 0;
+    var explicaPeor = "Compara tu peor resultado con la cobertura contra tu peor resultado sin cubrirte, " + ULTIMAS + ".";
+    var segunda = !cubre
+      ? [" Sin cubrirte, en un mal año de precios te quedarían ", numA("franja-peor", sin.peorMbTotal, "usd", o("peor MB total de los 6 escenarios históricos")), " USD."]
+      : enPorcentaje
+        ? [" En un mal año de precios, con tu cobertura te queda un ", numA("franja-peor", Math.abs(mejora) / sin.peorMbTotal, "porcentaje", o("diferencia entre los peores MB totales"), explicaPeor),
+          mejora >= 0 ? " más que sin cubrirte." : " menos que sin cubrirte."]
+        : [" En un mal año de precios, con tu cobertura te quedan ", numA("franja-peor", Math.abs(mejora), "usd", o("diferencia entre los peores MB totales"), explicaPeor),
+          mejora >= 0 ? " USD más que sin cubrirte." : " USD menos que sin cubrirte."];
     var partes = [el("span", { "class": "sc-franja-campana" }, "Tu campaña 2026/27"),
-      el("p", { "class": "sc-franja-titular" }, [numA("franja-margen", cob.mbTotal, "usd", o(TEXTO_FORMULA_MB)), " USD de margen esperado",
-        cubre ? "; cubriendo el " + (hUniforme(hp) !== null ? pct(hUniforme(hp)) : "que elegiste") + ", tu peor año " + (mejora >= 0 ? "mejora " : "empeora ") : "; sin cubrirte, tu peor año sería de ",
-        cubre ? numA("franja-peor", Math.abs(mejora), "usd", o("diferencia entre los peores MB totales")) : numA("franja-peor", sin.peorMbTotal, "usd", o("peor MB total de los 6 escenarios históricos")), " USD."])];
+      el("p", { "class": "sc-franja-titular" }, [numA("franja-margen", cob.mbTotal, "usd", o(TEXTO_FORMULA_MB)), " USD de margen esperado."].concat(segunda))];
     partes.forEach(function (n) { cont.appendChild(n); });
   }
 
@@ -1889,7 +2016,7 @@
     var hTorta = historia("torta", "graficoTorta", "Cultivos de la campaña (hectáreas)", null, "Gráfico de torta con la proporción de hectáreas de cada cultivo");
     var hCascada = historia("cascada", "graficoCascada", "Del ingreso al margen bruto", "USD de toda tu campaña; arriba, R sobre tu tierra", "Gráfico de cascada: ingreso bruto, costos, comisión y margen bruto de tu campaña");
     var hFuturo = historia("futuro", "graficoComparacion", "Futuro contra spot proyectado, por cultivo (margen bruto, USD por hectárea)", null, "Gráfico de barras por cultivo: margen bruto por hectárea con spot proyectado, con tu cobertura y con futuro");
-    var hEscenarios = historia("escenarios", "graficoEscenarios", "Rentabilidad R en los seis escenarios históricos", "R (margen bruto ÷ valor de la tierra); eje horizontal: campaña cuya sorpresa de precio se aplica", "Gráfico de líneas: rentabilidad en cada escenario histórico, sin cubrir y cubierto");
+    var hEscenarios = historia("escenarios", "graficoEscenarios", "Rentabilidad de tu tierra con los precios de las últimas 6 campañas", "rentabilidad (margen bruto ÷ valor de la tierra); eje horizontal: campaña de la que se toman los precios", "Gráfico de líneas: rentabilidad con los precios de cada una de las últimas 6 campañas, sin cubrir y cubierto");
     nodos.mas = el("div", { "class": "sc-mas", id: "sc-mas" }, [nodos.coberturas, nodos.proporciones, nodos.comparacion, nodos.riesgo, nodos.lectura]);
     nodos.mas.hidden = true;
     nodos.botonMas = el("button", { type: "button", "class": "sc-boton sc-boton-mas", id: "sc-mas-boton", "aria-expanded": "false", "aria-controls": "sc-mas" }, "Ver más detalle (tablas)");
@@ -1897,7 +2024,7 @@
     nodos.franja = el("div", { "class": "sc-franja", id: "sc-franja" });
     // Tres bloques, uno por pregunta: qué tengo, qué riesgo corro y qué me conviene hacer.
     var bloques = [["sc-b-campana", "01", "Tu campaña", [nodos.sabemos, hTorta, hCascada]], ["sc-b-riesgo", "02", "Tu riesgo", [nodos.hoy, hEscenarios]],
-      ["sc-b-propuesta", "03", "Tu propuesta", [nodos.propuesta, hFuturo]]];
+      ["sc-b-propuesta", "03", "Cobertura del Riesgo Precio", [nodos.propuesta, hFuturo]]];
     nodos.nav = el("nav", { "class": "sc-nav", "aria-label": "Bloques de los resultados" });
     var lista = el("ol", { "class": "sc-nav-lista" });
     nodos.nav.appendChild(lista);
@@ -1920,8 +2047,8 @@
       nodos.franja, nodos.resumen, nodos.marco,
       el("div", { "class": "sc-mas-caja" }, [nodos.botonMas, nodos.mas]),
       el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto no es asesoramiento financiero. "),
-        "El precio de cosecha proyectado es un supuesto del grupo (el crecimiento anual compuesto del precio disponible a cosecha entre 2020/21 y 2025/26), no un pronóstico. " +
-        "Los seis escenarios aplican las sorpresas de precio de las campañas pasadas al precio de cosecha proyectado (lo que no cubrís) y la base histórica al futuro 2026/27 (lo que cubrís), con rinde fijo: describen lo que pasó, no lo que va a pasar."])
+        "El precio de cosecha proyectado es una estimación (el último precio de cosecha, ajustado por lo que varió por año entre 2020/21 y 2025/26), no un pronóstico. " +
+        "Los resultados por campaña aplican a tu campo los movimientos de precios de las últimas 6 campañas, con el rinde que cargaste: describen lo que pasó, no lo que va a pasar."])
     ]);
     nodos.resultados = el("div", { "class": "mc-resultados sc-resultados", id: "sc-resultados", "aria-live": "polite" }, [nodos.avisoLink, nodos.vacio, nodos.ok]);
     nodos.resultados.hidden = true;

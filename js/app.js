@@ -220,7 +220,11 @@
     var clases = "numero";
     if (texto.charAt(0) === MENOS) clases += " negativo";
     if (texto === SIN_DATO) clases += " sin-dato";
-    var atributos = { "class": clases, "data-origen": origen || null, title: origen || null };
+    // opciones.explica: explicación en simple para el productor. Si está, es lo que muestran el cartelito y la ventanita
+    // (sin archivos ni celdas); el origen técnico queda igual en data-origen.
+    var explica = opciones && typeof opciones.explica === "string" && opciones.explica !== "" ? opciones.explica : null;
+    var atributos = { "class": clases, "data-origen": origen || null, title: explica || origen || null };
+    if (explica) atributos["data-explica"] = explica;
     if (typeof valor === "number" && isFinite(valor)) atributos["data-valor"] = String(valor);
     if (origen && !(opciones && opciones.enfocable === false)) {
       // Parada de tabulador que abre la ventanita: se anuncia como botón que abre un diálogo.
@@ -465,6 +469,9 @@
   // Abre la ventanita de un elemento con data-origen: valor exacto y de dónde sale.
   function abrirOrigen(nodo) {
     if (!panelOrigen || !nodo) return;
+    // Con explicación en simple (los números de «Simulá tu campaña»): sólo esa frase, sin valor exacto ni celdas.
+    var explica = nodo.getAttribute("data-explica");
+    if (explica) { abrirPanel(nodo, "De dónde sale este número", [el("p", { "class": "origen-simple" }, explica)]); return; }
     var exacto = textoValorExacto(nodo.getAttribute("data-valor"));
     var visto = "Se ve: " + nodo.textContent + (exacto ? " · " + exacto : "");
     abrirPanel(nodo, exacto ? "De dónde sale este número" : "De dónde sale este dato",
@@ -1264,16 +1271,9 @@
       return;
     }
     arrancado = true;
-    var FECHA_FUTUROS = "16/11/2026";
+    // El pie ya no lleva la línea de fechas de los datos: esa información está en «Datos y fuentes» (queda sólo el enlace).
     var pie = doc.getElementById("pie-datos");
-    if (pie) {
-      try {
-        // Dos fechas: los Excel de la tesis (datos.meta.extraidoEl) y los futuros 2026/27 de campana.js (cargados el 16/11/2026).
-        pie.textContent = "Datos de los Excel de la tesis: " + formatoFecha(datos.meta.extraidoEl) + ". Futuros 2026/27: Bolsa de Comercio de Rosario, al " + FECHA_FUTUROS + ".";
-      } catch (e) {
-        pie.textContent = "Datos extraídos de los Excels definitivos del grupo.";
-      }
-    }
+    if (pie) { pie.textContent = ""; pie.hidden = true; }
     incorporando = true;
     app.secciones.filter(function (s) { return !s.dentroDe; }).forEach(incorporar);
     app.secciones.filter(function (s) { return s.dentroDe; }).forEach(incorporar);

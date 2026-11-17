@@ -398,7 +398,7 @@
   }
 
   // ---------------------------------------------------------------------------------------
-  // Medidor de «Riesgo que sacás»: arco grueso por segmentos, aguja y la marca del umbral de la hipótesis
+  // Medidor de «Riesgo que sacás»: arco grueso por segmentos, aguja y la marca de la meta (50 %)
   // ---------------------------------------------------------------------------------------
 
   function punto(f, radio) {
@@ -432,7 +432,7 @@
     cien.textContent = "100 %";
     [marca, aguja, rotulo, cero, cien].forEach(function (n) { dibujo.appendChild(n); });
     var numero = el("p", { "class": "sc-medidor-numero" });
-    var supera = el("p", { "class": "sc-medidor-supera", role: "status" }, "Superás el umbral de la hipótesis");
+    var supera = el("p", { "class": "sc-medidor-supera", role: "status" }, "Disminuís más del 50 % del riesgo");
     supera.setAttribute("hidden", "");
     var ec = el("div", { "class": "sc-medidor-ec" });
     var caja = el("div", { "class": "sc-medidor", role: "img" }, [ec, dibujo, numero, supera]);
@@ -443,7 +443,7 @@
   function opcionAguja(m, c, valor, umbral, textoMarca, anim) {
     return {
       animation: anim, animationDuration: anim ? 1600 : 0, animationDurationUpdate: anim ? 1100 : 0, animationEasing: "cubicOut", animationEasingUpdate: "cubicOut",
-      graphic: [{ type: "text", left: "center", top: 4, style: { text: "Umbral de la hipótesis: " + textoMarca, fill: c.texto, fontFamily: c.fuente, fontSize: 12, fontWeight: 600 } }],
+      graphic: [{ type: "text", left: "center", top: 4, style: { text: "Meta: bajar el riesgo más del " + textoMarca, fill: c.texto, fontFamily: c.fuente, fontSize: 12, fontWeight: 600 } }],
       series: [{
         type: "gauge", startAngle: 180, endAngle: 0, min: 0, max: 100, splitNumber: 2, radius: "118%", center: ["50%", "86%"],
         axisLine: { lineStyle: { width: 28, color: [[Math.max(0.05, umbral * 0.9), c.alerta], [Math.min(0.95, umbral * 1.1), c.aviso], [1, c.logro]] } },
@@ -471,7 +471,7 @@
     } catch (e) { m.ec.setAttribute("data-error", String(e && e.message ? e.message : e)); m.nodo.setAttribute("data-modo", "segmentos"); }
   }
 
-  // valor: reducción del desvío (0 a 1, o null si no se puede calcular); umbral: la marca de la hipótesis (0 a 1).
+  // valor: reducción del desvío (0 a 1, o null si no se puede calcular); umbral: la marca de la meta (0 a 1).
   // modo: «con» (el valor de tu cobertura) o «sin» (sin cubrirte no sacás riesgo: aguja en 0 %).
   function pintarMedidor(m, valor, umbral, textoMarca, ariaLabel, colores, modo) {
     var sinCubrir = modo === "sin";
@@ -479,8 +479,9 @@
     m.marca.setAttribute("x1", a.x.toFixed(1)); m.marca.setAttribute("y1", a.y.toFixed(1));
     m.marca.setAttribute("x2", b.x.toFixed(1)); m.marca.setAttribute("y2", b.y.toFixed(1));
     m.rotulo.setAttribute("x", t.x.toFixed(1)); m.rotulo.setAttribute("y", (t.y - 2).toFixed(1));
-    m.rotulo.textContent = "Umbral de la hipótesis: " + textoMarca;
-    m.nodo.setAttribute("aria-label", sinCubrir ? "Riesgo que sacás sin cubrirte: 0 %. Marca del " + textoMarca + ": umbral de la hipótesis." : ariaLabel);
+    m.rotulo.textContent = "Meta: bajar el riesgo más del " + textoMarca;
+    m.supera.textContent = "Disminuís más del " + textoMarca + " del riesgo";
+    m.nodo.setAttribute("aria-label", sinCubrir ? "Riesgo que sacás sin cubrirte: 0 %." : ariaLabel);
     var valido = typeof valor === "number" && isFinite(valor);
     var f = valido && !sinCubrir ? Math.max(0, Math.min(1, valor)) : 0;
     var supera = valido && !sinCubrir && valor > umbral;
@@ -677,7 +678,7 @@
     var m = crearMedidor();
     medidor.cuerpo.appendChild(m.nodo);
     var selector = crearSelector();
-    var linea = bloque("sc-bloque-linea", "Tus seis años de la tesis");
+    var linea = bloque("sc-bloque-linea", "Resultados estimados – últimas 6 campañas");
     var r = crearLinea();
     [r.leyenda, r.nodo].forEach(function (n) { linea.cuerpo.appendChild(n); });
     var nodo = el("div", { "class": "sc-visual", id: "sc-visual", "data-modo": "con" }, [silos.nodo, selector.nodo, medidor.nodo, linea.nodo]);

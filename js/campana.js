@@ -151,7 +151,7 @@
     datos = datosDe(datos);
     var m = motor();
     var ultimo = casosOrdenados(datos, cultivo, zona).slice(-1)[0];
-    if (!ultimo) throw new Error("La tesis no tiene " + cultivo + " en la zona «" + zona + "».");
+    if (!ultimo) throw new Error("No hay datos de " + cultivo + " para la zona «" + zona + "».");
     return {
       cultivo: cultivo,
       campana: ultimo.campana,
@@ -293,7 +293,7 @@
   function validar(datos, entrada) {
     datos = datosDe(datos);
     if (entrada === null || typeof entrada !== "object") throw new Error("Falta la entrada de la campaña.");
-    if (zonas(datos).indexOf(entrada.zona) < 0) throw new Error("La zona «" + entrada.zona + "» no está en la tesis.");
+    if (zonas(datos).indexOf(entrada.zona) < 0) throw new Error("La zona «" + entrada.zona + "» no está entre las zonas del simulador.");
     var msg = revisarLimite("comision", entrada.comision) || revisarLimite("v", entrada.v);
     if (msg) throw new Error(msg);
     var claves = Object.keys(entrada.cultivos || {});
@@ -301,7 +301,7 @@
     revisarH(entrada.h, claves);
     var haTotal = 0;
     claves.forEach(function (cultivo) {
-      if (cultivosDeZona(datos, entrada.zona).indexOf(cultivo) < 0) throw new Error("La tesis no tiene " + cultivo + " en la zona «" + entrada.zona + "».");
+      if (cultivosDeZona(datos, entrada.zona).indexOf(cultivo) < 0) throw new Error("No hay datos de " + cultivo + " para la zona «" + entrada.zona + "».");
       var c = entrada.cultivos[cultivo];
       ["hectareas:ha", "rinde:rinde", "cd:cd", "gc:gc", "f27:f27"].forEach(function (par) {
         var partes = par.split(":");

@@ -1015,6 +1015,13 @@ output {
   color: var(--color-texto-suave);
 }
 
+/* Explicación en simple de un número (ventanita de «Simulá tu campaña»). */
+.origen-simple {
+  margin: 0 0 0.75rem;
+  max-width: 22rem;
+  line-height: 1.4;
+}
+
 .origen-celdas {
   margin: 0 0 0.5rem;
   padding-left: 1.1rem;
@@ -2294,6 +2301,12 @@ output {
   margin-top: 0.75rem;
 }
 
+/* «Siembra: junio → Cosecha: enero», debajo de las hectáreas de cada cultivo. */
+.sc-fechas-cultivo {
+  font-size: 0.875rem;
+  color: var(--color-texto);
+}
+
 .sc-nav-pasos {
   display: flex;
   flex-wrap: wrap;
@@ -2713,6 +2726,28 @@ html {
   font-size: clamp(1.3rem, 2.6vw, 1.85rem);
   font-weight: 300;
   line-height: 1.25;
+}
+
+/* Renglones dentro de una frase o titular: «Sin cubrirte: …» arriba y «Con tu cobertura: …» abajo. */
+.sc-renglon {
+  display: block;
+}
+
+.sc-sin-corte {
+  white-space: nowrap;
+}
+
+.sc-renglon + .sc-renglon {
+  margin-top: 0.25rem;
+}
+
+.sc-rango-rotulo {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-family: var(--fuente-texto);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .sc-historia .sc-figura {
