@@ -3043,3 +3043,11 @@ html.lenis body {
   margin: 0;
   line-height: 1.5;
 }
+
+/* Tope de 1.000 ha: el contador y la nota de cada cultivo se marcan cuando el total se pasa */
+.sc-contador-ha[data-excedido="true"],
+[data-excedido="true"].nota,
+.campo [data-excedido="true"] {
+  color: var(--color-alerta);
+  font-weight: 600;
+}

@@ -235,7 +235,7 @@
   function montarPasoCultivos(cont) {
     cont.appendChild(el("h3", null, "¿Qué sembrás?"));
     cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Tocá los cultivos de esta campaña (los que la tesis tiene para tu zona) y escribí cuántas hectáreas le dedicás a cada uno."));
-    cont.appendChild(el("p", { "class": "sc-nota sc-tope-ha", id: "sc-tope-ha" }, "Este simulador está pensado para campos de hasta " + fmMiles(C().HECTAREAS_MAX_TOTAL) + " hectáreas en total, el tamaño de productor que estudia la tesis."));
+    cont.appendChild(el("p", { "class": "sc-nota sc-tope-ha", id: "sc-tope-ha" }, "Este simulador está pensado para pequeños y medianos productores: campos de hasta " + fmMiles(C().HECTAREAS_MAX_TOTAL) + " hectáreas en total, el tamaño de productor que estudia la tesis."));
     nodos.contadorHa = el("p", { "class": "sc-nota sc-contador-ha", id: "sc-contador-ha", "aria-live": "polite" });
     cont.appendChild(nodos.contadorHa);
     cont.appendChild(el("p", { "class": "sc-nota sc-explica-fechas", id: "sc-explica-fechas" }, "Usamos las fechas típicas de cada cultivo en la Región Pampeana, las mismas de la tesis. Cubrirte es vender hoy un contrato que vence cuando cosechás. Así, el precio que fijás hoy es el que vas a cobrar en ese momento."));
@@ -271,11 +271,22 @@
 
   // Hectáreas cargadas hoy (suma de los cultivos elegidos; lo que no es un número entero cuenta como 0).
   function hectareasCargadas() {
-    return estado.cultivos.reduce(function (s, c) {
-      var t = String(estado.textos[c] ? estado.textos[c].ha : "").trim();
-      var n = /^\d+$/.test(t) ? Number(t) : /^\d{1,3}(\.\d{3})+$/.test(t) ? Number(t.replace(/\./g, "")) : 0;
-      return s + n;
-    }, 0);
+    return estado.cultivos.reduce(function (s, c) { return s + haDe(c); }, 0);
+  }
+
+  // Hectáreas válidas escritas para un cultivo (0 si el texto no es un entero válido).
+  function haDe(c) {
+    var t = String(estado.textos[c] ? estado.textos[c].ha : "").trim();
+    return /^\d+$/.test(t) ? Number(t) : /^\d{1,3}(\.\d{3})+$/.test(t) ? Number(t.replace(/\./g, "")) : 0;
+  }
+
+  // Nota bajo las hectáreas de un cultivo: cuánto puede poner sin pasar el tope total de la tesis (1.000 ha).
+  function notaHectareas(c) {
+    var tope = C().HECTAREAS_MAX_TOTAL, total = hectareasCargadas();
+    var libre = Math.max(0, tope - (total - haDe(c)));
+    return total > tope
+      ? "Te pasaste del máximo: en este cultivo podés poner hasta " + fmMiles(libre) + " ha (el campo suma " + fmMiles(tope) + " ha como máximo)."
+      : "Número entero, hasta " + fmMiles(libre) + " ha en este cultivo (entre todos los cultivos, " + fmMiles(tope) + " ha como máximo).";
   }
 
   function pintarContadorHa() {
@@ -505,7 +516,8 @@
     if (!estado.zona) return;
     estado.cultivos.forEach(function (c) {
       var d = estado.defs[c];
-      nodos.campos[c].ha.nota.textContent = "Número entero, por ejemplo 1500 o 1.500.";
+      nodos.campos[c].ha.nota.textContent = notaHectareas(c);
+      nodos.campos[c].ha.nota.setAttribute("data-excedido", hectareasCargadas() > C().HECTAREAS_MAX_TOTAL ? "true" : "false");
       pintarReferenciaRinde(c);
       var tn = C().leerDecimal(estado.textos[c].rinde);
       nodos.campos[c].rinde.nota.textContent = tn === null ? "Escribilo con coma decimal, por ejemplo 32,7." : "Equivale a " + coma(tn, 2) + " t/ha (10 qq = 1 t).";
@@ -619,7 +631,7 @@
     var navegacionPasos = el("div", { "class": "sc-nav-pasos" }, [nodos.atras, nodos.siguiente, nodos.ver]);
     var enlace = el("p", { "class": "sc-enlace-fuentes" }, [el("a", { href: "#datos-y-fuentes" }, "Datos y fuentes de la tesis")]);
     nodos.asistente = el("div", { "class": "sc-asistente sc-entradas tarjeta", id: "sc-asistente" }, [
-      el("p", { "class": "mc-intro" }, "Cargá los datos de tu campaña en cuatro pasos cortos. Con eso te mostramos cuánto esperás ganar y qué te cambiaría cubrirte con futuros."),
+      el("p", { "class": "mc-intro" }, "Pensado para pequeños y medianos productores (hasta 1.000 ha). Cargá los datos de tu campaña en cuatro pasos cortos. Con eso te mostramos cuánto esperás ganar y qué te cambiaría cubrirte con futuros."),
       nodos.progresoTexto, nodos.progreso,
       nodos.pasos[1], nodos.pasos[2], nodos.pasos[3], nodos.pasos[4], nodos.errorPaso, navegacionPasos, enlace]);
     cont.appendChild(nodos.asistente);
@@ -1600,7 +1612,7 @@
     nodos.avisoLink.hidden = true;
     nodos.cabeceraImpresion = el("div", { "class": "sc-impresion-cabecera" }, [
       el("p", { "class": "sc-imp-titulo" }, "Simulador de cobertura con futuros · Informe de campaña 2026/27"),
-      el("p", { "class": "sc-imp-detalle" }, "Región Pampeana · TIF Lic. en Finanzas (UADE)")]);
+      el("p", { "class": "sc-imp-detalle" }, "Región Pampeana · pequeños y medianos productores (hasta 1.000 ha) · TIF Lic. en Finanzas (UADE)")]);
     nodos.fecha = el("p", { "class": "sc-imp-fecha" });
     nodos.cabeceraImpresion.appendChild(nodos.fecha);
     nodos.encabezado = el("p", { "class": "sc-encabezado-informe" });
