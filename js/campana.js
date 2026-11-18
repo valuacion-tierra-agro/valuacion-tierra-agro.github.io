@@ -31,12 +31,12 @@
   // Rosario, porque A3 no publica el Futures_27.csv. Método verificado contra la tesis: ENE26 en jun-2025 da 203,97 y ABR26 en
   // sep-2025 da 176,64. Faltan ruedas sin boletín (trigo 25/06; maíz 17, 18 y 21/09; soja 09 y 10/11). Soja: noviembre en curso.
   var COTIZACIONES_2627 = [
-    { cultivo: "Trigo", mes: 1, contrato: "TRI.ROS/ENE27", valor: 214.73, fecha: "2026-06-30",
-      fuente: "PPP de junio 2026 (20 ruedas), Boletín Diario de la Bolsa de Comercio de Rosario" },
-    { cultivo: "Soja", mes: 5, contrato: "SOJ.ROS/MAY27", valor: 342.16, fecha: "2026-11-16",
+    { cultivo: "Trigo", mes: 1, contrato: "TRI.ROS/ENE27", valor: 214.43, fecha: "2026-06-30", fuenteCorta: "A3 Mercados",
+      fuente: "PPP de junio 2026 (21 ruedas, mes completo), A3 Mercados" },
+    { cultivo: "Soja", mes: 5, contrato: "SOJ.ROS/MAY27", valor: 342.16, fecha: "2026-11-16", fuenteCorta: "Boletín Diario BCR",
       fuente: "PPP de noviembre 2026 hasta el 16/11 (9 ruedas, mes en curso), Boletín Diario de la Bolsa de Comercio de Rosario" },
-    { cultivo: "Maíz", mes: 4, contrato: "MAI.ROS/ABR27", valor: 206.88, fecha: "2026-09-30",
-      fuente: "PPP de septiembre 2026 (19 ruedas), Boletín Diario de la Bolsa de Comercio de Rosario" }
+    { cultivo: "Maíz", mes: 4, contrato: "MAI.ROS/ABR27", valor: 206.85, fecha: "2026-09-30", fuenteCorta: "A3 Mercados",
+      fuente: "PPP de septiembre 2026 (22 ruedas, mes completo), A3 Mercados" }
   ];
   var CONTRATOS_2627 = {};
   COTIZACIONES_2627.forEach(function (f) { CONTRATOS_2627[f.cultivo] = f.contrato; });
@@ -135,7 +135,7 @@
     var salida;
     if (esFinito(fila.valor) && fila.fecha && fila.fuente) {
       salida = { valor: fila.valor, fecha: fila.fecha, fuente: fila.fuente, esReferencia: false,
-        origen: "Boletín Diario BCR › " + fila.contrato + " › " + fila.fuente.replace(/, Boletín Diario de la Bolsa de Comercio de Rosario$/, "") + " al " + fila.fecha };
+        origen: (fila.fuenteCorta || "Boletín Diario BCR") + " › " + fila.contrato + " › " + fila.fuente.replace(/, (Boletín Diario de la Bolsa de Comercio de Rosario|A3 Mercados)$/, "") + " al " + fila.fecha };
     } else {
       var ultimo = casosOrdenados(datos, cultivo, zona).slice(-1)[0];
       salida = { valor: ultimo.fs, fecha: null, fuente: null, esReferencia: true,

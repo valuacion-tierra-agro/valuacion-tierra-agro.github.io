@@ -132,7 +132,7 @@
     var r = v.referencia;
     var detalle = r.esReferencia ? " (" + r.contrato + " · " + C().ROTULO_REFERENCIA + ")" : " (" + r.contrato + " · " + r.fecha + " · " + r.fuente + ")";
     // Versión resumida: sin el nombre del contrato ni el detalle de las ruedas.
-    if (base().resumido && !r.esReferencia) detalle = " (promedio del mes de siembra, Bolsa de Comercio de Rosario)";
+    if (base().resumido && !r.esReferencia) detalle = " (promedio del mes de siembra, A3 Mercados y Bolsa de Comercio de Rosario)";
     cont.appendChild(el("p", { "class": "sec-nota" }, [(r.esReferencia ? "Futuro de referencia 2026/27 de " : "Futuro 2026/27 de ") + v.cultivo + ": ", num(r.valor, "usd2", r.origen), " USD/t" + detalle + ". ",
       r.esReferencia ? "Es el futuro de siembra de la última campaña, tomado como referencia: no es una cotización de hoy." : ""]));
   }

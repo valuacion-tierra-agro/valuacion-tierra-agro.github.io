@@ -1346,7 +1346,7 @@
       partes.push(c + ": " + (dia < ultimo ? textoMes(mes) + " en curso, al " + corta : textoMes(mes) + ", al cierre del " + corta));
     });
     if (!partes.length) return "";
-    return "Precio futuro 2026/27: promedio de las ruedas del mes de siembra, Bolsa de Comercio de Rosario. " + partes.join(". ")
+    return "Precio futuro 2026/27: promedio de las ruedas del mes de siembra, A3 Mercados y Bolsa de Comercio de Rosario. " + partes.join(". ")
       + (hayRef ? ". Los demás cultivos usan una referencia, no una cotización." : ".");
   }
 

@@ -264,7 +264,7 @@
     });
     return el("section", { "class": "tc-bloque tc-puente" }, [
       el("h3", { "class": "tc-seccion" }, "Y para esta campaña (2026/27)"),
-      el("p", { "class": "tc-nota" }, "Con los futuros 2026/27 de la Bolsa de Comercio de Rosario que usa el simulador y tu rinde esperado. Es lo que significaría cubrir, no un consejo."),
+      el("p", { "class": "tc-nota" }, "Con los futuros 2026/27 de A3 Mercados y la Bolsa de Comercio de Rosario que usa el simulador y tu rinde esperado. Es lo que significaría cubrir, no un consejo."),
       el("div", { "class": "tc-estrategias" }, tarjetas)
     ]);
   }
