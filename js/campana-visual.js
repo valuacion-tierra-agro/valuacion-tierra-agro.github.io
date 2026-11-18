@@ -553,11 +553,23 @@
     return { nodo: nodo, ec: ec, lista: lista, leyenda: leyenda, modo: "con", chart: null, visto: false, esperando: false, pendiente: null, items: [] };
   }
 
+  // Con cobertura, «Mejor año» y «Peor año» marcan el año en que cubrirse más ayudó y el año en que más costó; sin cubrirse no hay con
+  // qué comparar y marcan el margen más alto y el más bajo. En el dibujo el rótulo es corto; el aviso flotante y la lista lo dicen entero
+  // (d.rotuloMejor / d.rotuloPeor: «Mejor año para cubrirte»).
+  function rotulosLinea(d, modo) {
+    if (modo === "sin") return { peor: "Peor año", mejor: "Mejor año" };
+    return { peor: d.rotuloPeor || "Peor año", mejor: d.rotuloMejor || "Mejor año" };
+  }
+  function minuscula(t) { return t.charAt(0).toLowerCase() + t.slice(1); }
+
   // modo «sin»: los puntos de «con tu cobertura» pasan a la posición (y el aspecto) de los de «sin cubrirte»; la mancuerna se cierra.
-  function opcionLinea(d, anim, modo) {
+  function opcionLinea(d, anim, modo, ancho) {
     var c = d.colores;
+    // En pantallas angostas las campañas se escriben cortas («20/21») para que no se pisen.
+    var angosto = !d.impreso && ancho > 0 && ancho < 560;
     var sinCubrir = modo === "sin";
     var conV = sinCubrir ? d.sin : d.con, peorI = sinCubrir ? d.peorSin : d.peor, mejorI = sinCubrir ? d.mejorSin : d.mejor;
+    var rotulos = rotulosLinea(d, modo);
     var texto = { color: c.texto, fontFamily: c.fuente };
     var etiqueta = function (clase, fondo, color) {
       var rich = {};
@@ -581,13 +593,13 @@
             return '<div style="display:flex;justify-content:space-between;gap:18px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;box-sizing:border-box;border:3px solid '
               + color + ";background:" + (hueco ? c.superficie2 : color) + '"></span>' + nombre + "</span><b>" + valor + " USD</b></div>";
           };
-          var rol = i === peorI ? " · peor año" : i === mejorI ? " · mejor año" : "";
+          var rol = i === peorI ? " · " + minuscula(rotulos.peor) : i === mejorI ? " · " + minuscula(rotulos.mejor) : "";
           return '<div style="min-width:230px"><div style="font-weight:600;margin-bottom:5px">' + d.campanas[i] + rol + "</div>"
             + fila(c.con, false, "Con tu cobertura", d.usdCon[i]) + fila(c.sin, true, "Sin cubrirte", d.usdSin[i]) + "</div>";
         }
       },
-      xAxis: { type: "category", data: d.campanas, boundaryGap: true, axisLine: { lineStyle: { color: c.bordeFuerte } }, axisTick: { show: false }, axisLabel: { color: c.texto, fontSize: d.impreso ? 11 : 13, margin: 12, interval: 0 } },
-      yAxis: { type: "value", min: d.min, max: d.max, name: "USD", nameTextStyle: { color: c.suave, align: "right" }, splitNumber: 4,
+      xAxis: { type: "category", data: d.campanas, boundaryGap: true, axisLine: { lineStyle: { color: c.bordeFuerte } }, axisTick: { show: false }, axisLabel: { color: c.texto, fontSize: d.impreso || angosto ? 11 : 13, margin: 12, interval: 0, formatter: function (x) { return angosto ? String(x).slice(2) : x; } } },
+      yAxis: { type: "value", min: d.min, max: d.max, interval: d.paso || undefined, name: "USD", nameTextStyle: { color: c.suave, align: "right" }, splitNumber: 4,
         axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: c.borde } }, axisLabel: { color: c.suave, fontSize: d.impreso ? 11 : 12, formatter: d.formatoEje } },
       series: [
         { id: "dif", type: "custom", name: "Diferencia", silent: true, z: 1, tooltip: { show: false }, data: d.campanas.map(function (x, i) { return [i, d.sin[i], conV[i]]; }),
@@ -613,7 +625,7 @@
       if (!l.chart) l.chart = E.init(l.ec, null, { renderer: "svg" });
       // Al cambiar entre «sin cubrirte» y «con tu cobertura» se mezcla con lo dibujado: los puntos se desplazan de una posición a la otra.
       var cambio = !!l.modoDibujado && l.modoDibujado !== l.modo;
-      l.chart.setOption(opcionLinea(d, !sinMovimiento(), l.modo), !cambio);
+      l.chart.setOption(opcionLinea(d, !sinMovimiento(), l.modo, l.ec.clientWidth), !cambio);
       l.modoDibujado = l.modo;
       l.chart.resize(imprimiendo ? { width: ANCHO_LINEA_IMPRESA, height: ALTO_LINEA_IMPRESA } : undefined);
       if (imprimiendo && typeof l.chart.getZr === "function") l.chart.getZr().refreshImmediately();
@@ -624,10 +636,11 @@
     }
   }
 
-  // d: { campanas, sin: [USD], con: [USD], usdSin, usdCon (textos), peor, mejor, min, max (eje común a todas las proporciones), formatoEje, colores, impreso, aria }
+  // d: { campanas, sin: [USD], con: [USD], usdSin, usdCon (textos), peor, mejor (−1 = sin rótulo), rotuloPeor, rotuloMejor, min, max, paso (eje fijo y redondo, común a todas las proporciones), formatoEje, colores, impreso, aria }
   function pintarLinea(l, d, modo) {
     l.modo = modo === "sin" ? "sin" : "con";
     var peorI = l.modo === "sin" ? d.peorSin : d.peor, mejorI = l.modo === "sin" ? d.mejorSin : d.mejor;
+    var rotulos = rotulosLinea(d, l.modo);
     l.nodo.setAttribute("data-modo-linea", l.modo);
     l.nodo.setAttribute("aria-label", d.aria);
     // Respaldo en texto (y lectura para quien no ve el dibujo): una fila por campaña, en orden cronológico.
@@ -642,7 +655,7 @@
     d.campanas.forEach(function (campana, i) {
       var rol = i === peorI ? "peor" : i === mejorI ? "mejor" : "";
       l.items[i].setAttribute("class", "sc-linea-item" + (rol ? " sc-linea-" + rol : ""));
-      l.items[i].textContent = campana + (rol ? " (" + (rol === "peor" ? "peor año" : "mejor año") + ")" : "") + ": con tu cobertura " + d.usdCon[i] + " USD, sin cubrirte " + d.usdSin[i] + " USD";
+      l.items[i].textContent = campana + (rol ? " (" + minuscula(rol === "peor" ? rotulos.peor : rotulos.mejor) + ")" : "") + ": con tu cobertura " + d.usdCon[i] + " USD, sin cubrirte " + d.usdSin[i] + " USD";
     });
     if (!raiz.echarts) { l.nodo.setAttribute("data-modo", "lista"); return; }
     if (!l.nodo.getAttribute("data-modo")) l.nodo.setAttribute("data-modo", "grafico");   // el contenedor tiene que verse para que ECharts le mida el tamaño

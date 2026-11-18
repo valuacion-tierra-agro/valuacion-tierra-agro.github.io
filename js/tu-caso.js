@@ -19,6 +19,8 @@
   function numBase(v, f, o, explica) { return base().numero(v, f, o, { explica: explica || base().explicarOrigen(o, EXPLICA) }); }
   function num(v, f, o) { return numBase(v, f, o); }
   function V() { return raiz.TESIS_VISUAL || null; }
+  // Versión resumida (TESIS_APP.resumido): encabezado, margen por campaña, qué pasó y cuánto se movió el margen. Lo demás no se arma.
+  function resumido() { return !!base().resumido; }
   function numA(clave, valor, formato, origen) {
     var nodo = num(valor, formato, origen);
     return V() ? V().contar(nodo, clave, valor, function (n) { return base().formato.aplicar(formato, n); }) : nodo;
@@ -533,6 +535,13 @@
         el("td", null, n === sin ? "—" : cuanto(n)), el("td", null, [num(n.peor, "usd", o), " a ", num(n.mejor, "usd", o)]), el("td", null, num(n.media, "usd", o))]);
     });
     var cab = ["Cobertura y riesgo", "Cuánto varió (USD)", "Frente a sin cubrir", "Peor a mejor año (USD)", "Diferencia promedio con lo proyectado (USD)"];
+    if (resumido()) {
+      return el("section", { "class": "tarjeta tc-bloque tc-historia tc-volatilidad" }, [el("h4", null, "Cuánto se movió tu margen de un año a otro"),
+        el("p", { "class": "tc-relato" }, ["Sin cubrir, tu margen se movió ", num(sin.rango, "usd", o), " USD entre el peor año (", sin.campanaPeor, ") y el mejor (", sin.campanaMejor,
+          "). Cubriendo " + (cien.h === 1 ? "el 100 %" : cien.rotulo.toLowerCase()) + ", ese recorrido fue de ", num(cien.rango, "usd", o), " USD."]),
+        nodo, leyenda,
+        el("p", { "class": "tc-lectura" }, "Cómo se lee: cada punto es una campaña y la franja va del peor al mejor año. Sin cubrir, los puntos quedan dispersos; al cubrir, se juntan. Cubrir no te hace ganar más en promedio: te hace depender menos del precio.")]);
+    }
     return el("section", { "class": "tarjeta tc-bloque tc-historia tc-volatilidad" }, [el("h4", null, "Cuánto se movió tu margen de un año a otro"),
       el("p", { "class": "tc-relato" }, "No cubrir es depender del precio que haya el día de la cosecha: cada año tu margen se mueve con el precio. Cubrir es fijar una parte de antemano y tener un resultado más previsible. Esto es lo que pasó en tu zona con tus cultivos."),
       significa, nodo, leyenda,
@@ -638,14 +647,23 @@
     cont.appendChild(anim(el("section", { "class": "tarjeta tc-bloque" },
       [el("h4", null, "Qué pasó en tu caso")].concat(relato(r).map(function (fr) { return el("p", { "class": "tc-relato" }, fr); })))));
 
-    cont.appendChild(anim(el("div", { "class": "tc-bloque" }, [el("h3", { "class": "tc-seccion" }, "La historia: qué movió tus resultados"), seccionPrecio(r)])));
-    nodos.cascada = nodos.cascada || { h: 0, nodos: {} };
-    nodos.cascada.nodos = {};
-    cont.appendChild(anim(seccionCascada(r, nodos.cascada)));
+    var corta = resumido();
+    if (!corta) {
+      cont.appendChild(anim(el("div", { "class": "tc-bloque" }, [el("h3", { "class": "tc-seccion" }, "La historia: qué movió tus resultados"), seccionPrecio(r)])));
+      nodos.cascada = nodos.cascada || { h: 0, nodos: {} };
+      nodos.cascada.nodos = {};
+      cont.appendChild(anim(seccionCascada(r, nodos.cascada)));
+    }
     cont.appendChild(anim(seccionVolatilidad(r, ctx, ha)));
-    cont.appendChild(anim(seccionBarras(r)));
-    if (r.aporte.length > 1 && r.aporte.every(function (x) { return x.media > 0; })) cont.appendChild(anim(seccionDona(r)));
+    if (!corta) {
+      cont.appendChild(anim(seccionBarras(r)));
+      if (r.aporte.length > 1 && r.aporte.every(function (x) { return x.media > 0; })) cont.appendChild(anim(seccionDona(r)));
+    }
     nodos.pendientes.forEach(function (x) { nodos.ec.dibujar(x.clave, x.nodo, x.opcion()); });
+    if (corta) {
+      cont.appendChild(el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, AVISO), " Los márgenes son brutos, con el rinde de referencia de tu zona y una comisión de " + String(r.comision * 100).replace(".", ",") + " %."]));
+      return;
+    }
 
     cont.appendChild(anim(el("section", { "class": "tc-bloque" }, [
       el("h3", { "class": "tc-seccion" }, "Línea de tiempo, campaña por campaña"),

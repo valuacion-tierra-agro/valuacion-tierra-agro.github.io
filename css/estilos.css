@@ -891,6 +891,22 @@ output {
 }
 
 /* Datos y fuentes: control en vivo, filtros y tabla de los 114 casos */
+/* Versión resumida de «Datos y fuentes»: la lista de fuentes */
+.df-fuentes {
+  margin: 0 0 1.5rem;
+  padding-left: 1.25rem;
+  max-width: 46rem;
+  line-height: 1.6;
+}
+
+.df-fuentes li + li {
+  margin-top: 0.25rem;
+}
+
+.sec-plegable {
+  margin: 1rem 0;
+}
+
 .df-intro {
   margin: 0 0 1rem;
 }
@@ -2562,6 +2578,22 @@ html {
   scroll-margin-top: 6rem;
 }
 
+/* Proyección 2027: una tarjeta por cultivo con el precio futuro de la cosecha 2027 */
+.sc-clave-proyeccion .sc-frase {
+  margin-top: 0.5rem;
+}
+
+.sc-proyeccion-total {
+  margin-top: 1rem;
+  font-size: 1.0625rem;
+}
+
+@media (min-width: 760px) {
+  .sc-claves-una {
+    grid-template-columns: minmax(0, 28rem);
+  }
+}
+
 .sc-nav {
   position: sticky;
   top: 3rem;
@@ -3923,6 +3955,10 @@ html {
   .sc-historia-futuro .sc-grafico {
     width: 690px;
     height: 200px;
+  }
+
+  .sc-historia-proyeccion .sc-grafico {
+    width: 690px;
   }
 
   .sc-resultados .tarjeta,

@@ -128,7 +128,7 @@
     cont.appendChild(el("p", null, [v.elegidas.length === 1 ? "La zona " + v.elegidas[0].zona + " se valorizó " : "Las " + v.elegidas.length + " zonas elegidas se valorizaron en promedio ",
       num(l.promedio, "porcentaje", base().origenCalculado("promedio simple de las valorizaciones anuales compuestas de las zonas elegidas", origenes)),
       " por año entre " + anios(v.elegidas[0]) + "."]));
-    cont.appendChild(el("p", { "class": "ayuda" }, ["Promedio de la tesis, 8 zonas, 2020 a 2026: ",
+    cont.appendChild(el("p", { "class": "ayuda" }, ["Promedio de las 8 zonas, 2020 a 2026: ",
       num(raiz.TESIS_CIFRAS.valorizacionTierra.v * 100, "usd2", raiz.TESIS_CIFRAS.valorizacionTierra.o), " % por año."]));
     if (v.elegidas.length > 1) {
       cont.appendChild(el("p", null, ["La que más se valorizó fue " + l.mayor.zona + " (", num(l.mayor.valorizacion, "porcentaje", base().origenCalculado("valorización anual compuesta", l.mayor.origen)),
@@ -136,7 +136,7 @@
         " por año, de " + anios(l.menor) + ")."]));
     }
     if (l.repetidas.length) {
-      cont.appendChild(el("p", null, "En los datos de la tesis hay zonas con exactamente el mismo valor de la tierra año a año (" +
+      cont.appendChild(el("p", null, "Hay zonas con exactamente el mismo valor de la tierra año a año (" +
         l.repetidas.map(function (g) { return enumerar(g.zonas); }).join("; ") + "), por eso cada grupo comparte una sola línea en el gráfico."));
     }
   }
@@ -216,7 +216,9 @@
     nodos.lectura = el("div", { "class": "tarjeta sc-lectura" });
     nodos.cuadro = el("div", { "class": "sec-cuadro" }, [
       nodos.resumen, nodos.figura, nodos.tabla, nodos.lectura,
-      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Ojo con la rentabilidad. "), NOTA_R])
+      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Ojo con la rentabilidad. "), base().resumido
+        ? "La rentabilidad es el margen bruto dividido por el valor de la tierra. Cuando la tierra se valoriza, la rentabilidad medida así baja, aunque el campo deje lo mismo: la valorización no se suma."
+        : NOTA_R])
     ]);
     contenedor.appendChild(nodos.cuadro);
     render();

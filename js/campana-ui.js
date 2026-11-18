@@ -1255,6 +1255,69 @@
 
   function textoMes(n) { return C().MESES[n - 1]; }
 
+  // ---------------------------------------------------------------------------------------
+  // Proyección 2027: los precios que hoy se pueden fijar para la cosecha 2027, al lado de los de las últimas campañas
+  // ---------------------------------------------------------------------------------------
+
+  var CAMPANA_PROYECTADA = "2026/27";
+
+  // De cada cultivo: el futuro al sembrar y el precio en la cosecha de cada campaña pasada, y el futuro de la cosecha 2027.
+  function proyeccionDe(v) {
+    return v.nombres.map(function (c) {
+      var i = v.cultivos[c];
+      var fs = i.casos.map(function (k) { return k.fs; }), sc = i.casos.map(function (k) { return k.sc; });
+      var promedio = fs.reduce(function (a, b) { return a + b; }, 0) / fs.length;
+      var anterior = i.casos[i.casos.length - 1];
+      return { cultivo: c, campanas: i.casos.map(function (k) { return k.campana; }), fs: fs, sc: sc, f27: i.f27, promedio: promedio,
+        anterior: anterior.fs, campanaAnterior: anterior.campana, contraAnterior: i.f27 / anterior.fs - 1, contraPromedio: i.f27 / promedio - 1,
+        bajaron: i.casos.filter(function (k) { return k.sc < k.fs; }).length, mbHaCubierto: v.resultados[1].porCultivo[c].mbHa };
+    });
+  }
+
+  function pintarProyeccion(v) {
+    var cont = nodos.proyeccion;
+    if (!cont) return;
+    base().vaciar(cont);
+    var o = function (f) { return origenDe(f, v, TODO); };
+    var filas = proyeccionDe(v);
+    var n = v.campanas.length;
+    var masOMenos = function (x) { return x >= 0 ? " más" : " menos"; };
+    cont.appendChild(el("h3", null, "Cómo vienen los precios para tu cosecha 2027"));
+    cont.appendChild(el("p", { "class": "sc-ayuda-paso" }, "Son los precios que hoy podés fijar con futuros para la cosecha 2027, comparados con los de las últimas " + n
+      + " campañas. El precio que va a haber en la cosecha todavía no se conoce."));
+    cont.appendChild(el("div", { "class": "sc-claves" + (filas.length === 2 ? " sc-claves-dos" : filas.length === 1 ? " sc-claves-una" : "") }, filas.map(function (f) {
+      var clave = f.cultivo.toLowerCase();
+      return el("div", { "class": "tarjeta sc-clave sc-clave-proyeccion", "data-cultivo": f.cultivo }, [
+        el("h4", null, f.cultivo + " · cosecha de " + textoMes(C().CALENDARIO[f.cultivo].cosecha) + " de 2027"),
+        el("p", { "class": "sc-numero" }, [numA("proy-f27-" + clave, f.f27, "usd", o("F27 de " + f.cultivo),
+          "Es el precio del contrato de futuros que vence en tu mes de cosecha: el promedio del mes de siembra en el mercado de Rosario."), el("span", { "class": "mc-unidad" }, " USD por tonelada")]),
+        el("p", { "class": "sc-frase" }, [
+          el("span", { "class": "sc-renglon" }, [num(Math.abs(f.contraAnterior), "porcentaje", o("F27 ÷ futuro al sembrar de " + f.campanaAnterior + " − 1"),
+            "Compara el precio futuro de la cosecha 2027 con el que había al sembrar la campaña pasada."), masOMenos(f.contraAnterior) + " que al sembrar la campaña pasada (" + fm().usd(f.anterior) + " USD)."]),
+          el("span", { "class": "sc-renglon" }, [num(Math.abs(f.contraPromedio), "porcentaje", o("F27 ÷ promedio del futuro al sembrar de las " + n + " campañas − 1"),
+            "Compara el precio futuro de la cosecha 2027 con el promedio de los precios futuros al sembrar de las últimas " + n + " campañas."), masOMenos(f.contraPromedio) + " que el promedio de las últimas " + n + " campañas (" + fm().usd(f.promedio) + " USD)."]),
+          el("span", { "class": "sc-renglon" }, ["Si cubrís todo, te deja ", num(f.mbHaCubierto, "usd", o("MB por hectárea de " + f.cultivo + " con el 100 % cubierto"),
+            "Lo que cobrás por hectárea con todo el precio fijado, menos los costos y la comisión de los futuros."), " USD de margen por hectárea."])
+        ])
+      ]);
+    })));
+    var todo = v.resultados[1];
+    cont.appendChild(el("p", { "class": "sc-frase sc-proyeccion-total" }, ["Si fijás esos precios para toda tu cosecha, tu campaña 2027 deja ",
+      numA("proy-margen", todo.mbTotal, "usd", o("MB total con el 100 % cubierto"), "Lo que te queda en toda la campaña si cubrís toda la cosecha con futuros: lo que cobrás menos los costos y la comisión."),
+      " USD de margen bruto: una rentabilidad de ", num(todo.r, "porcentaje", o("R = MB total con el 100 % cubierto ÷ (hectáreas × V)"), "El margen con todo cubierto, dividido por lo que vale tu tierra."),
+      " sobre el valor de tu tierra."]));
+
+    // Lectura del gráfico: en cuántas campañas el precio de cosecha terminó abajo del futuro al sembrar (ahí, haber fijado el precio dejaba más).
+    var h = nodos.historias.proyeccion;
+    if (!h) return;
+    base().vaciar(h.titular);
+    var veces = function (k) { return k === 1 ? "1 vez" : k + " veces"; };
+    h.titular.textContent = "En las últimas " + n + " campañas, el precio en la cosecha terminó por debajo del futuro al sembrar "
+      + listaEnTexto(filas.map(function (f) { return veces(f.bajaron) + " en " + f.cultivo.toLowerCase(); })) + ".";
+    h.lectura.textContent = "La línea de color es el precio futuro al sembrar; la gris punteada, el precio que hubo después en la cosecha. Cuando la gris queda abajo, haber fijado el precio dejaba más. "
+      + "El último punto (" + CAMPANA_PROYECTADA + ") es el precio que podés fijar hoy para la cosecha 2027.";
+  }
+
   function pintarCalendarioResultado(v) {
     var cont = nodos.calendarioRes;
     base().vaciar(cont);
@@ -1363,6 +1426,16 @@
     return mejor;
   }
 
+  // Eje vertical fijo y redondo: de 0 (o del múltiplo de abajo, si hay pérdidas) al múltiplo de arriba, en unos seis pasos parejos.
+  function ejeRedondo(min, max) {
+    var tope = Math.max(max, 0), piso = Math.min(min, 0);
+    var bruto = (tope - piso) / 6 || 1;
+    var pot = Math.pow(10, Math.floor(Math.log(bruto) / Math.LN10));
+    var paso = pot * 10;
+    [1, 2, 2.5, 5, 10].some(function (m) { if (m * pot >= bruto * (1 - 1e-9)) { paso = m * pot; return true; } return false; });
+    return { min: Math.floor(piso / paso) * paso, max: Math.ceil(tope / paso) * paso, paso: paso };
+  }
+
   function texto(t) { return raiz.document.createTextNode(t); }
 
   function pintarVisual(v) {
@@ -1394,8 +1467,13 @@
     var todos = totalesCon.concat(totalesSin);
     C().PROPORCIONES.forEach(function (h) { todos = todos.concat(totalesPorEscenario(v, v.escenarios[h])); });
     var min = Math.min.apply(null, todos), max = Math.max.apply(null, todos);
-    var margen = (max - min) * 0.16 || 1;
+    var eje = ejeRedondo(min, max);
     var peor = indiceDe(totalesCon, false), mejor = indiceDe(totalesCon, true);
+    // Con cobertura, el gráfico marca el año en que cubrirte más te ayudó y el año en que más te costó (contra no cubrirte).
+    var difs = totalesCon.map(function (t, i) { return t - totalesSin[i]; });
+    var ayudo = indiceDe(difs, true), costo = indiceDe(difs, false);
+    if (!(difs[ayudo] > 0.5)) ayudo = -1;
+    if (!(difs[costo] < -0.5)) costo = -1;
     var peorSin = indiceDe(totalesSin, false), mejorSin = indiceDe(totalesSin, true);
     var rango = totalesCon[mejor] - totalesCon[peor];
     var rangoSin = Math.max.apply(null, totalesSin) - Math.min.apply(null, totalesSin);
@@ -1419,7 +1497,9 @@
           + (reduccion > umbral ? " Disminuís más del " + pct(umbral) + " del riesgo." : "")
       },
       linea: {
-        campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: peor, mejor: mejor, peorSin: peorSin, mejorSin: mejorSin, min: min - margen, max: max + margen, impreso: imprimiendo,
+        campanas: v.campanas, con: totalesCon, sin: totalesSin, peor: cubre ? costo : peor, mejor: cubre ? ayudo : mejor, peorSin: peorSin, mejorSin: mejorSin,
+        rotuloPeor: cubre ? "Peor año para cubrirte" : "Peor año", rotuloMejor: cubre ? "Mejor año para cubrirte" : "Mejor año",
+        min: eje.min, max: eje.max, paso: eje.paso, impreso: imprimiendo,
         usdCon: totalesCon.map(function (t) { return fm().usd(t); }), usdSin: totalesSin.map(function (t) { return fm().usd(t); }),
         formatoEje: function (x) { return fm().usd(Math.round(x / 1000)) + " mil"; },
         colores: {
@@ -1430,7 +1510,8 @@
           sobreAlerta: imprimiendo ? "#ffffff" : "#161616", sobreLogro: imprimiendo ? "#ffffff" : "#161616",
           sombra: imprimiendo ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)"
         },
-        aria: "Tu campaña con los precios de las últimas 6 campañas. Peor: " + v.campanas[peor] + ", " + fm().usd(totalesCon[peor]) + " USD. Mejor: " + v.campanas[mejor] + ", " + fm().usd(totalesCon[mejor]) + " USD."
+        aria: "Tu campaña con los precios de las últimas 6 campañas. Año más bajo: " + v.campanas[peor] + ", " + fm().usd(totalesCon[peor]) + " USD. Año más alto: " + v.campanas[mejor] + ", " + fm().usd(totalesCon[mejor]) + " USD."
+          + (cubre && ayudo >= 0 ? " Cubrirte te convino más en " + v.campanas[ayudo] + "." : "") + (cubre && costo >= 0 ? " Te costó más en " + v.campanas[costo] + "." : "")
       }
     });
 
@@ -1458,16 +1539,37 @@
 
     base().vaciar(f.linea);
     var fl = version(f.linea, "con");
-    fl.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
-    fl.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
-    fl.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
-    fl.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
-    fl.appendChild(texto(" USD) hay "));
-    fl.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
-    fl.appendChild(texto(" USD de diferencia" + (cubre ? "; sin cubrirte serían " : ".")));
+    var renglon = function (padre) { var r = el("span", { "class": "sc-renglon" }); padre.appendChild(r); return r; };
+    var explicaDif = "Lo que te queda con tu cobertura menos lo que te quedaría sin cubrirte, con los precios de esa campaña.";
     if (cubre) {
-      fl.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
-      fl.appendChild(texto(" USD."));
+      if (ayudo >= 0) {
+        var ra = renglon(fl);
+        ra.appendChild(texto("Cubrirte te convino más en " + v.campanas[ayudo] + ": te quedaban "));
+        ra.appendChild(num(difs[ayudo], "usd", o("MB total con tu cobertura − MB total sin cubrir, escenario " + v.campanas[ayudo]), explicaDif));
+        ra.appendChild(texto(" USD más que sin cubrirte."));
+      }
+      if (costo >= 0) {
+        var rc = renglon(fl);
+        rc.appendChild(texto("Te costó más en " + v.campanas[costo] + ": te quedaban "));
+        rc.appendChild(num(-difs[costo], "usd", o("MB total sin cubrir − MB total con tu cobertura, escenario " + v.campanas[costo]), explicaDif));
+        rc.appendChild(texto(" USD menos que sin cubrirte."));
+      }
+      var rr = renglon(fl);
+      rr.appendChild(texto("Entre tu año más bajo y el más alto hay "));
+      rr.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
+      rr.appendChild(texto(" USD de diferencia; sin cubrirte serían "));
+      rr.appendChild(num(rangoSin, "usd", o("diferencia entre el mejor y el peor MB total sin cubrir")));
+      rr.appendChild(texto(" USD."));
+    } else {
+      fl.appendChild(texto("Entre el peor año (" + v.campanas[peor] + ", "));
+      fl.appendChild(num(totalesCon[peor], "usd", o("MB total del escenario " + v.campanas[peor])));
+      fl.appendChild(texto(" USD) y el mejor (" + v.campanas[mejor] + ", "));
+      fl.appendChild(num(totalesCon[mejor], "usd", o("MB total del escenario " + v.campanas[mejor])));
+      fl.appendChild(texto(" USD) hay "));
+      fl.appendChild(num(rango, "usd", o("diferencia entre el mejor y el peor MB total de los 6 escenarios")));
+      fl.appendChild(texto(" USD de diferencia."));
+    }
+    if (cubre) {
       var fs = version(f.linea, "sin");
       fs.appendChild(texto("Sin cubrirte, entre el peor año (" + v.campanas[peorSin] + ", "));
       fs.appendChild(num(totalesSin[peorSin], "usd", o("MB total del escenario " + v.campanas[peorSin] + " sin cobertura")));
@@ -1671,14 +1773,15 @@
   }
 
   var altoComparacion = 215;   // alto del gráfico de futuro contra spot: sigue a la cantidad de barras
+  var altoProyeccion = 300;    // alto del gráfico de la proyección 2027: un panel por cultivo
   function dibujar(clave, nodo, opcion) {
     if (!raiz.echarts || !nodo) return;
     try {
       var g = graficos[clave];
       if (!g) { g = graficos[clave] = raiz.echarts.init(nodo, null, { renderer: "svg" }); }
       g.setOption(opcion, true);
-      var ancho = clave === "escenarios" || clave === "comparacion";
-      g.resize(imprimiendo ? { width: ancho ? 690 : ANCHO_IMPRESION, height: clave === "comparacion" ? altoComparacion : ancho ? 170 : ALTO_IMPRESION } : undefined);
+      var ancho = clave === "escenarios" || clave === "comparacion" || clave === "proyeccion";
+      g.resize(imprimiendo ? { width: ancho ? 690 : ANCHO_IMPRESION, height: clave === "comparacion" ? altoComparacion : clave === "proyeccion" ? altoProyeccion : ancho ? 170 : ALTO_IMPRESION } : undefined);
       // Para imprimir el dibujo tiene que estar terminado antes de que el navegador arme la hoja: no se espera al próximo cuadro.
       if (imprimiendo && typeof g.getZr === "function") g.getZr().refreshImmediately();
     } catch (e) {
@@ -1786,6 +1889,48 @@
       }), label: { show: true, color: txt.color, fontSize: chica + 1, fontWeight: 600, formatter: function (q) { return fm.usd(q.value); } } }]
     });
     }
+
+    // Proyección 2027: un panel por cultivo, con el futuro al sembrar (línea de color) y el precio en la cosecha (gris punteada) de cada campaña;
+    // el último punto es el futuro de la cosecha 2027 (el precio de cosecha todavía no existe).
+    var filasP = proyeccionDe(v);
+    var catsP = v.campanas.concat([CAMPANA_PROYECTADA]);
+    // En pantallas angostas la leyenda ocupa dos renglones y las campañas se escriben cortas («20/21») para que no se pisen.
+    var anchoP = !imprimiendo && nodos.graficoProyeccion && nodos.graficoProyeccion.clientWidth ? nodos.graficoProyeccion.clientWidth : 690;
+    var angostoP = anchoP < 520;
+    var altoPanel = imprimiendo ? 118 : 200, altoLeyenda = angostoP ? 56 : 30, entrePaneles = imprimiendo ? 14 : 26, altoRotulo = 24, altoEjeX = 26;
+    altoProyeccion = altoLeyenda + filasP.length * altoPanel + (filasP.length - 1) * entrePaneles;
+    if (nodos.graficoProyeccion && nodos.graficoProyeccion.setAttribute) nodos.graficoProyeccion.setAttribute("style", "height:" + altoProyeccion + "px");
+    var topePanel = function (k) { return altoLeyenda + k * (altoPanel + entrePaneles); };
+    var NOMBRE_FUTURO = "Precio futuro al sembrar", NOMBRE_COSECHA = "Precio en la cosecha";
+    var seriesP = [];
+    filasP.forEach(function (f, k) {
+      seriesP.push({ name: NOMBRE_COSECHA, type: "line", xAxisIndex: k, yAxisIndex: k, symbol: "emptyCircle", symbolSize: 7, connectNulls: false,
+        itemStyle: { color: cNeutro }, lineStyle: { color: cNeutro, width: 2, type: "dashed" }, data: f.sc.concat([null]) });
+      seriesP.push({ name: NOMBRE_FUTURO, type: "line", xAxisIndex: k, yAxisIndex: k, symbol: "circle", symbolSize: 8,
+        itemStyle: { color: colores[f.cultivo] }, lineStyle: { color: colores[f.cultivo], width: 3 },
+        data: f.fs.concat([{ value: f.f27, symbolSize: imprimiendo ? 12 : 16,
+          label: { show: true, position: "top", distance: 6, color: txt.color, fontFamily: txt.fontFamily, fontSize: chica + 1, fontWeight: 700, formatter: function () { return fm.usd(f.f27); } } }]) });
+    });
+    dibujar("proyeccion", nodos.graficoProyeccion, {
+      animation: anim, textStyle: txt,
+      legend: { top: 0, left: angostoP ? 0 : "center", orient: angostoP ? "vertical" : "horizontal", selectedMode: false, itemGap: angostoP ? 6 : 16, textStyle: { color: txt.color, fontFamily: txt.fontFamily, fontSize: chica },
+        data: [{ name: NOMBRE_FUTURO, icon: "roundRect", itemStyle: { color: txt.color }, lineStyle: { color: txt.color } }, { name: NOMBRE_COSECHA, itemStyle: { color: cNeutro } }] },
+      title: filasP.map(function (f, k) { return { text: f.cultivo, left: 0, top: topePanel(k), textStyle: { color: colores[f.cultivo], fontFamily: txt.fontFamily, fontSize: chica + 2, fontWeight: 600 } }; }),
+      grid: filasP.map(function (f, k) { return { left: 52, right: 40, top: topePanel(k) + altoRotulo + 14, height: altoPanel - altoRotulo - 14 - altoEjeX }; }),
+      tooltip: tooltipDelTema({ trigger: "axis", axisPointer: { lineStyle: { color: bordeFuerte } },
+        formatter: function (ps) {
+          if (!ps || !ps.length) return "";
+          var f = filasP[ps[0].axisIndex !== undefined ? ps[0].axisIndex : 0] || filasP[0];
+          var i = ps[0].dataIndex;
+          var futuro = i < f.fs.length ? f.fs[i] : f.f27;
+          return "<b>" + f.cultivo + " · " + catsP[i] + "</b><br>" + NOMBRE_FUTURO + ": " + fm.usd(futuro) + " USD/t<br>" + NOMBRE_COSECHA + ": "
+            + (i < f.sc.length ? fm.usd(f.sc[i]) + " USD/t" : "todavía no se conoce");
+        } }),
+      xAxis: filasP.map(function (f, k) { return { type: "category", gridIndex: k, data: catsP, boundaryGap: false,
+        axisLabel: { color: txt.color, fontSize: chica, interval: 0, formatter: function (c) { return angostoP ? String(c).slice(2) : c; } }, axisLine: { lineStyle: { color: bordeFuerte } }, axisTick: { show: false } }; }),
+      yAxis: filasP.map(function (f, k) { return { type: "value", gridIndex: k, scale: true, splitNumber: 3, axisLabel: { color: suave, fontSize: chica, formatter: function (x) { return fm.usd(x); } }, splitLine: { lineStyle: { color: borde } } }; }),
+      series: seriesP
+    });
 
     var series = [{ h: 0, nombre: "Sin cubrirte", color: cSin }, { h: 1, nombre: "Todo cubierto", color: cCon }];
     var uniformeG = hUniforme(v.hPorCultivo);
@@ -1937,6 +2082,7 @@
     pintarHoy(vista);
     pintarCalendarioResultado(vista);
     pintarPropuesta(vista);
+    pintarProyeccion(vista);
     pintarDetalle(vistaVer());
     pintarFranja(vista);
     pintarHistorias(vistaVer());
@@ -2019,6 +2165,7 @@
     nodos.sabemos = el("div", { "class": "sc-seccion-res", id: "sc-sabemos" });
     nodos.hoy = el("div", { "class": "sc-seccion-res", id: "sc-hoy" });
     nodos.propuesta = el("div", { "class": "sc-seccion-res", id: "sc-propuesta" });
+    nodos.proyeccion = el("div", { "class": "sc-seccion-res", id: "sc-proyeccion" });
     nodos.calendarioRes = el("div", { "class": "sc-calendario-res" });
     nodos.coberturas = el("div", { "class": "sc-coberturas" });
     nodos.proporciones = el("div", { "class": "sc-proporciones" });
@@ -2038,14 +2185,16 @@
     var hCascada = historia("cascada", "graficoCascada", "Del ingreso al margen bruto", "USD de toda tu campaña; arriba, R sobre tu tierra", "Gráfico de cascada: ingreso bruto, costos, comisión y margen bruto de tu campaña");
     var hFuturo = historia("futuro", "graficoComparacion", "Futuro contra spot proyectado, por cultivo (margen bruto, USD por hectárea)", null, "Gráfico de barras por cultivo: margen bruto por hectárea con spot proyectado, con tu cobertura y con futuro");
     var hEscenarios = historia("escenarios", "graficoEscenarios", "Rentabilidad de tu tierra con los precios de las últimas 6 campañas", "rentabilidad (margen bruto ÷ valor de la tierra); eje horizontal: campaña de la que se toman los precios", "Gráfico de líneas: rentabilidad con los precios de cada una de las últimas 6 campañas, sin cubrir y cubierto");
+    var hProyeccion = historia("proyeccion", "graficoProyeccion", "Precio futuro al sembrar y precio en la cosecha, por campaña", "USD por tonelada; eje horizontal: campaña (la última, " + CAMPANA_PROYECTADA + ", es la cosecha 2027)", "Gráfico de líneas por cultivo: precio futuro al sembrar y precio en la cosecha de cada campaña, y el precio futuro de la cosecha 2027");
     nodos.mas = el("div", { "class": "sc-mas", id: "sc-mas" }, [nodos.coberturas, nodos.proporciones, nodos.comparacion, nodos.riesgo, nodos.lectura]);
     nodos.mas.hidden = true;
     nodos.botonMas = el("button", { type: "button", "class": "sc-boton sc-boton-mas", id: "sc-mas-boton", "aria-expanded": "false", "aria-controls": "sc-mas" }, "Ver más detalle (tablas)");
     nodos.botonMas.addEventListener("click", alternarDetalle);
     nodos.franja = el("div", { "class": "sc-franja", id: "sc-franja" });
-    // Tres bloques, uno por pregunta: qué tengo, qué riesgo corro y qué me conviene hacer.
+    // Cuatro bloques, uno por pregunta: qué tengo, qué riesgo corro, qué me conviene hacer y cómo viene la cosecha 2027.
     var bloques = [["sc-b-campana", "01", "Tu campaña", [nodos.sabemos, hTorta, hCascada]], ["sc-b-riesgo", "02", "Tu riesgo", [nodos.hoy, hEscenarios]],
-      ["sc-b-propuesta", "03", "Cobertura del Riesgo Precio", MOSTRAR_FUTURO_VS_SPOT ? [nodos.propuesta, hFuturo] : [nodos.propuesta]]];
+      ["sc-b-propuesta", "03", "Cobertura del Riesgo Precio", MOSTRAR_FUTURO_VS_SPOT ? [nodos.propuesta, hFuturo] : [nodos.propuesta]],
+      ["sc-b-proyeccion", "04", "Proyección 2027", [nodos.proyeccion, hProyeccion]]];
     nodos.nav = el("nav", { "class": "sc-nav", "aria-label": "Bloques de los resultados" });
     var lista = el("ol", { "class": "sc-nav-lista" });
     nodos.nav.appendChild(lista);

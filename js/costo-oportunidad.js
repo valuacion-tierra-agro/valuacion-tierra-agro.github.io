@@ -13,6 +13,15 @@
     ["Riesgo país (EMBI)", "Es la sobretasa que paga Argentina, por encima de Estados Unidos, para que le presten plata. Lo mide el índice EMBI. Se suma porque invertir en Argentina exige ese plus: con riesgo país alto, el costo de oportunidad es alto."]
   ];
 
+  // Versión resumida (TESIS_APP.resumido): tres definiciones de una frase, tu campo contra el costo de oportunidad, el gráfico, los
+  // componentes año por año en un desplegable cerrado y la conclusión. La segunda tabla y el detalle de la conclusión no se arman.
+  function resumido() { return !!base().resumido; }
+  var EXPLICACIONES_CORTAS = [
+    ["Costo de oportunidad", "Es lo que dejás de ganar por tener tu plata en la tierra y no en otra inversión de riesgo parecido."],
+    ["Cómo se calcula (CAPM)", "Tasa libre de riesgo + sensibilidad al mercado (β) × prima de mercado + riesgo país."],
+    ["Riesgo país (EMBI)", "Es la sobretasa que paga Argentina para que le presten plata. Cuando sube, sube el costo de oportunidad."]
+  ];
+
   var nodos = {};
   var ec = null;
   var ultima = null;
@@ -167,6 +176,10 @@
       : "El resultado depende del riesgo país: comparar la rentabilidad con el costo de oportunidad sin y con riesgo país da conclusiones distintas, como muestran las cifras de abajo.";
     cont.appendChild(el("h3", null, "En palabras"));
     cont.appendChild(el("p", { "class": "sec-central" }, central));
+    if (resumido()) {
+      cont.appendChild(el("p", { "class": "ayuda" }, "La rentabilidad es el promedio de los tres cultivos y de todas las zonas. «Con cobertura» es con toda la cosecha cubierta con futuros."));
+      return;
+    }
     cont.appendChild(frase("Sin riesgo país", l.sinEmbi));
     cont.appendChild(frase("Con riesgo país", l.conEmbi));
     cont.appendChild(el("p", { "class": "ayuda" }, "La rentabilidad es el promedio de los tres cultivos (trigo, soja y maíz) y de todas las zonas, con el rinde esperado de cada zona. «Con cobertura» es con el " +
@@ -244,7 +257,7 @@
     nodos.cuadro.hidden = false;
     pintarTuya(v);
     pintarComponentes(v);
-    pintarTablaR(v);
+    if (!resumido()) pintarTablaR(v);
     pintarLectura(v);
     pintarGrafico(v);
     return v;
@@ -253,7 +266,7 @@
   function montar(contenedor) {
     ec = raiz.TESIS_EC ? raiz.TESIS_EC.crear(function () { if (ultima) pintarGrafico(ultima); }) : null;
     contenedor.appendChild(el("p", { "class": "mc-intro" }, "¿Rinde la tierra lo suficiente? Para saberlo hay que compararla con lo que exigiría un inversor por el riesgo de poner su plata en la Argentina."));
-    contenedor.appendChild(el("div", { "class": "sec-explicaciones" }, EXPLICACIONES.map(function (e) {
+    contenedor.appendChild(el("div", { "class": "sec-explicaciones" }, (resumido() ? EXPLICACIONES_CORTAS : EXPLICACIONES).map(function (e) {
       return el("div", { "class": "tarjeta sec-explicacion" }, [el("h3", null, e[0]), el("p", null, e[1])]);
     })));
     nodos.tuya = el("div", { "class": "tarjeta sc-lectura sec-tuya" });
@@ -266,7 +279,8 @@
       nodos.tuya,
       el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Rentabilidad contra costo de oportunidad, con y sin riesgo país", "rentabilidad y costo de oportunidad (% anual)", "año de cosecha"), nodos.grafico,
         el("p", { "class": "ayuda" }, "La franja es lo que agrega el riesgo país al rendimiento que se le exige a la tierra; si tu rentabilidad queda debajo, la tierra rinde menos de lo que se le exige por su riesgo.")]),
-      nodos.componentes, nodos.tablaR, nodos.lectura,
+      resumido() ? el("details", { "class": "df-acordeon sec-plegable", id: "co-componentes" }, [el("summary", null, "Ver cómo se compone el costo de oportunidad, año por año"), nodos.componentes]) : nodos.componentes,
+      resumido() ? null : nodos.tablaR, nodos.lectura,
       el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es asesoramiento financiero: la comparación no predice lo que va a pasar."])
     ]);
     contenedor.appendChild(nodos.cuadro);

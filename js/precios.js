@@ -8,9 +8,9 @@
   var CULTIVO_INICIAL = "Soja";
   var AYUDA = [
     "El productor siembra con un precio en la cabeza y cosecha con otro. Esta pantalla muestra, para cada cultivo, tres precios de cada campaña:",
-    "Fs es el precio del contrato a futuro cuando se siembra (lo que se podía fijar de antemano), Sc es lo que valía la mercadería disponible a la hora de cosechar y Fc es el precio del mismo contrato a futuro llegada la cosecha."
+    "El futuro al sembrar es el precio que se podía fijar de antemano; el precio en la cosecha es lo que valía la mercadería ese día; y el futuro en la cosecha es lo que valía ese mismo contrato al llegar la cosecha."
   ];
-  var AYUDA_TABLA = "La sorpresa de precio (Sc − Fs) es cuánto se movió el mercado entre la siembra y la cosecha respecto de lo que se podía fijar al sembrar: si es positiva, quien no se cubrió terminó vendiendo mejor que quien fijó el precio de siembra. La base (Sc − Fc) es la diferencia, en la cosecha, entre el disponible y el futuro.";
+  var AYUDA_TABLA = "La diferencia entre la cosecha y la siembra es cuánto se movió el precio respecto de lo que se podía fijar al sembrar: si es positiva, quien no se cubrió terminó vendiendo mejor que quien fijó el precio. La base es la diferencia, en la cosecha, entre el disponible y el futuro.";
 
   var estado = { cultivo: CULTIVO_INICIAL };
   var nodos = {};
@@ -30,7 +30,7 @@
   // Casos de un cultivo en orden de campaña. Fs, Sc y Fc son los mismos en todas las zonas: se toma la primera que lo tiene.
   function casosDelCultivo(datos, cultivo) {
     var zonas = M().zonasDe(datos, cultivo);
-    if (!zonas.length) throw new Error("La tesis no tiene precios de " + cultivo + ".");
+    if (!zonas.length) throw new Error("No hay precios de " + cultivo + ".");
     return { zona: zonas[0], casos: M().casosDe(datos, cultivo, zonas[0]).slice().sort(function (a, b) { return a.campana < b.campana ? -1 : a.campana > b.campana ? 1 : 0; }) };
   }
 
@@ -72,9 +72,9 @@
     return {
       categorias: cats,
       series: [
-        { nombre: "Fs · futuro al sembrar", clave: "fs", valores: relleno(vista.filas.map(function (f) { return f.fs; })) },
-        { nombre: "Sc · disponible a cosecha", clave: "sc", valores: relleno(vista.filas.map(function (f) { return f.sc; })) },
-        { nombre: "Fc · futuro a cosecha", clave: "fc", valores: relleno(vista.filas.map(function (f) { return f.fc; })) },
+        { nombre: "Futuro al sembrar", clave: "fs", valores: relleno(vista.filas.map(function (f) { return f.fs; })) },
+        { nombre: "Precio en la cosecha", clave: "sc", valores: relleno(vista.filas.map(function (f) { return f.sc; })) },
+        { nombre: "Futuro en la cosecha", clave: "fc", valores: relleno(vista.filas.map(function (f) { return f.fc; })) },
         { nombre: vista.referencia.esReferencia ? "Referencia 2026/27 (no es una cotización)" : "Futuro 2026/27 (al sembrar)", clave: "ref", valores: vacios.concat([vista.referencia.valor]) }
       ]
     };
@@ -89,7 +89,7 @@
   function pintarTabla(v) {
     var cont = nodos.tabla;
     base().vaciar(cont);
-    var cab = el("tr", null, ["Campaña", "Fs (USD/t)", "Sc (USD/t)", "Fc (USD/t)", "Sorpresa Sc − Fs (USD/t)", "Sorpresa Sc − Fs (%)", "Base Sc − Fc (USD/t)"].map(function (t) { return el("th", { scope: "col" }, t); }));
+    var cab = el("tr", null, ["Campaña", "Futuro al sembrar (USD/t)", "Precio en la cosecha (USD/t)", "Futuro en la cosecha (USD/t)", "Cosecha menos siembra (USD/t)", "Cosecha menos siembra (%)", "Base (USD/t)"].map(function (t) { return el("th", { scope: "col" }, t); }));
     var filas = v.filas.map(function (f) {
       return el("tr", null, [
         el("th", { scope: "row" }, f.campana),
@@ -116,13 +116,13 @@
     var oBase = base().origenCalculado("promedio de (Sc − Fc) de las campañas", v.filas.map(function (f) { return f.origen.sc; }).concat(v.filas.map(function (f) { return f.origen.fc; })));
     var arriba = m.sorpresa >= 0;
     cont.appendChild(el("h3", null, "En palabras"));
-    cont.appendChild(el("p", null, ["En ", num(l.superaron, "entero", oSup), " de las ", num(l.campanas, "entero", "Cantidad de campañas con precios en los Excels de la tesis (2020/21 a 2025/26): " + v.filas[0].origen.fs),
-      " campañas, el precio de " + v.cultivo.toLowerCase() + " a cosecha (Sc) superó al futuro que se podía fijar al sembrar (Fs). ",
-      "En promedio, la sorpresa fue de ", num(l.sorpresaMedia, "usd2", base().origenCalculado("promedio de (Sc − Fs)", v.filas.map(function (f) { return f.origen.sc; }).concat(v.filas.map(function (f) { return f.origen.fs; })))), " USD/t."]));
-    cont.appendChild(el("p", null, ["La mayor sorpresa fue la de la campaña " + m.campana + ": el disponible a cosecha quedó ",
+    cont.appendChild(el("p", null, ["En ", num(l.superaron, "entero", oSup), " de las ", num(l.campanas, "entero", "Cantidad de campañas con precios (2020/21 a 2025/26): " + v.filas[0].origen.fs),
+      " campañas, el precio de " + v.cultivo.toLowerCase() + " en la cosecha superó al futuro que se podía fijar al sembrar. ",
+      "En promedio, la diferencia fue de ", num(l.sorpresaMedia, "usd2", base().origenCalculado("promedio de (Sc − Fs)", v.filas.map(function (f) { return f.origen.sc; }).concat(v.filas.map(function (f) { return f.origen.fs; })))), " USD/t."]));
+    cont.appendChild(el("p", null, ["La mayor diferencia fue la de la campaña " + m.campana + ": el disponible a cosecha quedó ",
       num(Math.abs(m.sorpresa), "usd2", origenDif("|Sc − Fs|", m.origen.sc, m.origen.fs)), " USD/t (", num(Math.abs(m.sorpresaPct), "porcentaje", origenDif("|Sc − Fs| ÷ Fs", m.origen.sc, m.origen.fs)),
       arriba ? ") por encima" : ") por debajo", " del futuro de siembra."]));
-    cont.appendChild(el("p", null, ["La base promedio (Sc − Fc) fue de ", num(l.baseMedia, "usd2", oBase), " USD/t: en la cosecha, el disponible cotizó en promedio ",
+    cont.appendChild(el("p", null, ["La base promedio fue de ", num(l.baseMedia, "usd2", oBase), " USD/t: en la cosecha, el disponible cotizó en promedio ",
       l.baseMedia < 0 ? "por debajo" : "por encima", " del futuro de ese mismo mes."]));
   }
 
@@ -131,6 +131,8 @@
     base().vaciar(cont);
     var r = v.referencia;
     var detalle = r.esReferencia ? " (" + r.contrato + " · " + C().ROTULO_REFERENCIA + ")" : " (" + r.contrato + " · " + r.fecha + " · " + r.fuente + ")";
+    // Versión resumida: sin el nombre del contrato ni el detalle de las ruedas.
+    if (base().resumido && !r.esReferencia) detalle = " (promedio del mes de siembra, Bolsa de Comercio de Rosario)";
     cont.appendChild(el("p", { "class": "sec-nota" }, [(r.esReferencia ? "Futuro de referencia 2026/27 de " : "Futuro 2026/27 de ") + v.cultivo + ": ", num(r.valor, "usd2", r.origen), " USD/t" + detalle + ". ",
       r.esReferencia ? "Es el futuro de siembra de la última campaña, tomado como referencia: no es una cotización de hoy." : ""]));
   }
@@ -200,9 +202,9 @@
     nodos.referencia = el("div", { "class": "sec-referencia" });
     nodos.cuadro = el("div", { "class": "sec-cuadro" }, [
       nodos.resumen,
-      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Fs, Sc y Fc por campaña", "precio en USD por tonelada", "campaña (la última es el futuro 2026/27)"), nodos.grafico]),
+      el("figure", { "class": "sc-figura" }, [base().encabezadoDeGrafico("Precios por campaña", "precio en USD por tonelada", "campaña (la última es el futuro 2026/27)"), nodos.grafico]),
       nodos.referencia, nodos.tabla, nodos.lectura,
-      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es una predicción ni un consejo de cobertura: son los precios de las campañas 2020/21 a 2025/26 de los Excels de la tesis."])
+      el("p", { "class": "sc-aviso", role: "note" }, [el("strong", null, "Esto describe lo que pasó. "), "No es una predicción ni un consejo de cobertura: son los precios de las campañas 2020/21 a 2025/26."])
     ]);
     contenedor.appendChild(nodos.cuadro);
     render();

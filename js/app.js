@@ -224,6 +224,8 @@
     // opciones.explica: explicación en simple para el productor. Si está, es lo que muestran el cartelito y la ventanita
     // (sin archivos ni celdas); el origen técnico queda igual en data-origen.
     var explica = opciones && typeof opciones.explica === "string" && opciones.explica !== "" ? opciones.explica : null;
+    // Versión resumida: ningún número muestra archivo, hoja ni celda; si la pestaña no trae su frase, va la general.
+    if (!explica && app.resumido) explica = explicarOrigen(origen);
     var atributos = { "class": clases, "data-origen": origen || null, title: explica || origen || null };
     if (explica) atributos["data-explica"] = explica;
     if (typeof valor === "number" && isFinite(valor)) atributos["data-valor"] = String(valor);
@@ -1053,7 +1055,10 @@
   // ---------------------------------------------------------------------------------------
 
   // Secciones que ya no se muestran en el menú de «Histórico» (su código sigue en el repo): no se registran.
-  app.seccionesFueraDelMenu = ["escenario", "rentabilidad"];
+  app.seccionesFueraDelMenu = ["escenario", "rentabilidad", "mi-campo"];
+  // Versión resumida de «Histórico», «Costo de oportunidad» y «Datos y fuentes»: cada pantalla muestra sólo lo principal (lo que se
+  // explica en una exposición). El resto del código sigue en el repo y se sigue probando: con `resumido = false` se ve todo.
+  app.resumido = true;
 
   function registrarSeccion(seccion) {
     if (seccion === null || typeof seccion !== "object") {

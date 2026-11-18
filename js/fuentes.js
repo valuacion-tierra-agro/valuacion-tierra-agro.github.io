@@ -9,6 +9,37 @@
   var MENSAJE_SIN_CASOS = "Ningún caso cumple esos filtros.";
 
   function base() { return raiz.TESIS_APP; }
+  // Versión resumida (TESIS_APP.resumido): de dónde salen los datos (una lista), Precios, Valor de la tierra y «Cómo se calcula y qué
+  // límites tiene». El control contra el Excel, la tabla de casos y los archivos de origen no se arman.
+  function resumido() { return !!base().resumido; }
+  var FUENTES_SIMPLES = [
+    ["Precios de los futuros y del disponible", "A3 Mercados y Bolsa de Comercio de Rosario."],
+    ["Rindes", "Ministerio de Agricultura (MAGyP), por departamento."],
+    ["Costos", "Revista Márgenes Agropecuarios."],
+    ["Valor de la tierra", "Márgenes Agropecuarios, con datos de la Compañía Argentina de Tierras."],
+    ["Costo de oportunidad", "Bonos del Tesoro de Estados Unidos y riesgo país (EMBI)."]
+  ];
+  var FORMULAS_SIMPLES = [
+    { nombre: "Margen esperado al sembrar", formula: "rinde esperado × (precio futuro al sembrar − gastos de venta) − costos directos − cosecha",
+      explicacion: "Lo que se esperaba ganar por hectárea al sembrar." },
+    { nombre: "Margen real sin cobertura", formula: "rinde real × (precio en la cosecha − gastos de venta) − costos directos − cosecha",
+      explicacion: "Lo que se ganó vendiendo todo al precio del día de la cosecha." },
+    { nombre: "Resultado del futuro", formula: "parte cubierta × rinde esperado × (futuro al sembrar − futuro en la cosecha) − comisión",
+      explicacion: "Si el precio baja después de sembrar, el futuro deja una ganancia que compensa; si sube, deja una pérdida." },
+    { nombre: "Margen real con cobertura", formula: "margen real sin cobertura + resultado del futuro",
+      explicacion: "Lo que queda por hectárea habiendo fijado el precio." },
+    { nombre: "Rentabilidad", formula: "margen ÷ valor de la tierra",
+      explicacion: "Lo que deja el campo en un año, comparado con lo que vale la hectárea." }
+  ];
+  var LIMITES_SIMPLES = [
+    "Son seis campañas (2020/21 a 2025/26): los números describen lo que pasó, no predicen lo que va a pasar.",
+    "El rinde es el promedio de los departamentos de cada zona, no el de un campo en particular.",
+    "Los costos son los de un planteo tipo de Márgenes Agropecuarios, no los de un campo real.",
+    "La cobertura se hace una sola vez, al sembrar, y se mantiene hasta la cosecha.",
+    "El futuro cubre el precio, no el rinde: si se cosecha menos, eso queda sin cubrir.",
+    "El valor de la tierra es el promedio provincial del año de cosecha.",
+    "Cuando una zona no tiene datos de un cultivo, se usan los de la zona vecina más cercana, con el valor de la tierra de la zona elegida."
+  ];
 
   function celdaNumero(v, formato, origen) {
     return { v: v, formato: formato, origen: origen };
@@ -555,16 +586,17 @@
     var parametros = armarParametros(datos);
     return el("section", { id: "df-formulas", "class": "df-formulas df-bloque" }, [
       el("h3", null, "Cómo se calcula"),
-      el("dl", null, FORMULAS_EXPLICADAS.map(function (f) {
+      el("dl", null, (resumido() ? FORMULAS_SIMPLES : FORMULAS_EXPLICADAS).map(function (f) {
         return [
           el("dt", null, f.nombre),
           el("dd", null, [el("p", { "class": "df-formula" }, f.formula), el("p", { "class": "df-explicacion" }, f.explicacion)])
         ];
       })),
-      el("p", { "class": "ayuda" }, [
-        "En el Excel, la comisión es ", num(parametros.comision), " del precio del futuro y la proporción cubierta (h) es ",
-        num(parametros.h), "."
-      ])
+      resumido() ? el("p", { "class": "ayuda" }, ["La comisión de los futuros es ", num(parametros.comision), " del precio del contrato."])
+        : el("p", { "class": "ayuda" }, [
+          "En el Excel, la comisión es ", num(parametros.comision), " del precio del futuro y la proporción cubierta (h) es ",
+          num(parametros.h), "."
+        ])
     ]);
   }
 
@@ -572,7 +604,7 @@
     var el = base().el;
     return el("section", { id: "df-limites", "class": "df-bloque" }, [
       el("h3", null, "Límites del modelo"),
-      el("ol", { "class": "df-limites" }, LIMITES.map(function (texto) { return el("li", null, texto); }))
+      el("ol", { "class": "df-limites" }, (resumido() ? LIMITES_SIMPLES : LIMITES).map(function (texto) { return el("li", null, texto); }))
     ]);
   }
 
@@ -609,6 +641,25 @@
     nodos.volver = el("p", { "class": "df-volver" }, el("a", { href: "#campana" }, "← Volver a cargar mis datos"));
     nodos.volver.hidden = a.cargado;
     contenedor.appendChild(nodos.volver);
+    if (resumido()) {
+      contenedor.appendChild(el("p", { "class": "df-intro" }, "De dónde salen los datos que usa el simulador:"));
+      var fuentes = FUENTES_SIMPLES.slice();
+      if (raiz.TESIS_MAPA) fuentes.push(["Mapa de zonas", raiz.TESIS_MAPA.atribucion + ". Las zonas son aproximadas."]);
+      contenedor.appendChild(el("ul", { "class": "df-fuentes", id: "df-fuentes" }, fuentes.map(function (f) { return el("li", null, [el("strong", null, f[0] + ": "), f[1]]); })));
+      var plegable = function (clave, titulo) {
+        var cuerpo = el("div", { "class": "df-acordeon-cuerpo" });
+        var d = el("details", { "class": "df-acordeon", id: "df-acordeon-" + clave }, [el("summary", null, titulo), cuerpo]);
+        nodos.acordeones[clave] = { detalle: d, cuerpo: cuerpo };
+        contenedor.appendChild(d);
+        return cuerpo;
+      };
+      plegable("precios", "Precios");
+      plegable("tierra", "Valor de la tierra");
+      var calculo = plegable("estadistica", "Cómo se calcula y qué límites tiene");
+      calculo.appendChild(pintarFormulas(datos));
+      calculo.appendChild(pintarLimites());
+      return;
+    }
     contenedor.appendChild(el("p", { "class": "df-intro" },
       "Los datos salen del trabajo final de la Licenciatura en Finanzas (UADE) y de fuentes públicas: los precios de los futuros, de A3 Mercados y la Bolsa de Comercio de Rosario; " +
       "los rindes, del Ministerio de Agricultura (MAGyP); los costos y el valor de la tierra, de Márgenes Agropecuarios (el valor, de la Compañía Argentina de Tierras); " +
@@ -682,6 +733,7 @@
   function actualizar() {
     var a = base();
     if (nodos.volver) nodos.volver.hidden = !!a.cargado;
+    if (resumido()) return;
     var control = a.control || undefined;
     if (!nodos.casosListos || control === undefined || control !== controlPintado) {
       pintarControl(armarControl(raiz.TESIS_DATOS, control));
@@ -695,7 +747,7 @@
 
   // Si el cálculo falla, la base pide vaciar lo que se ve.
   function limpiar() {
-    if (!nodos) return;
+    if (!nodos || resumido()) return;
     var a = base();
     a.vaciar(nodos.controlCuerpo);
     a.vaciar(nodos.contador);

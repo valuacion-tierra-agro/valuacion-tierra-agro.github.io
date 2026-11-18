@@ -56,6 +56,9 @@
   var EXPLICACION_FIJO = "Con el rinde fijo (el esperado, el mismo todos los años) lo único que cambia es el precio, justo lo que cubre el futuro: por eso la baja es tan alta. Con el rinde real también cambia lo que se cosecha, y eso queda sin cubrir.";
 
   function base() { return raiz.TESIS_APP; }
+  // Versión resumida (TESIS_APP.resumido): sólo el resultado principal (cuánto baja el riesgo, con su gráfico y su tabla) y una nota
+  // sobre el rinde real. «Zona por zona», «¿Cuánto cubrir?» y «Por qué el margen se alejó» no se arman.
+  function resumido() { return !!(raiz.TESIS_APP && raiz.TESIS_APP.resumido); }
 
   function esNumero(x) {
     return typeof x === "number" && isFinite(x);
@@ -195,7 +198,11 @@
     var cierre = v.seCumple ? ["Es más que el ", meta, " que se pedía: la hipótesis se cumple."] : v.frase;
     var frase = ["Resultado: con el rinde fijo, cubrir el 100 % de la cosecha baja el riesgo ", total.cien, " ("].concat(enumerarPartes(porCultivo),
       ["); con el 50 % cubierto lo baja ", total.cincuenta, ". "], cierre);
-    return { seCumple: v.seCumple, frase: frase };
+    // cuerpo y cierreSimple: la misma conclusión dicha sin nombrar la hipótesis (versión resumida).
+    var cuerpo = ["Con el rinde fijo, cubrir el 100 % de la cosecha baja el riesgo ", total.cien, " ("].concat(enumerarPartes(porCultivo),
+      ["); con el 50 % cubierto lo baja ", total.cincuenta, ". "]);
+    var cierreSimple = v.seCumple ? ["Cubriendo todo, baja bastante más que el ", meta, " que se buscaba."] : ["Cubriendo todo, no llega al ", meta, " que se buscaba en todos los cultivos."];
+    return { seCumple: v.seCumple, frase: frase, simple: cuerpo.concat(cierreSimple) };
   }
 
   function armarGraficoTesis(filas, meta) {
@@ -280,6 +287,7 @@
       filasTesis: filasTesis,
       seCumple: conclusion.seCumple,
       conclusion: conclusion.frase,
+      conclusionSimple: conclusion.simple,
       explicacionFijo: EXPLICACION_FIJO,
       aviso: AVISO,
       grafico: armarGraficoTesis(filasTesis, meta),
@@ -772,6 +780,16 @@
     nodos = {};
     pintado = { datos: null, estaticos: false };
     filtroCultivo = "todos";
+    if (resumido()) {
+      contenedor.appendChild(el("p", { "class": "rh-intro" }, "¿Cubrirse con futuros baja el riesgo más de la mitad?"));
+      nodos.hipotesis = el("div", { id: "rh-hipotesis-resultados" });
+      contenedor.appendChild(el("section", { id: "rh-hipotesis", "class": "rh-bloque" }, [
+        el("h3", null, "¿Baja el riesgo más del 50 %?"),
+        el("p", { "class": "rh-explicacion" }, "Se midió en 114 casos (cada cultivo, en cada zona y en cada campaña), con el rinde esperado fijo para ver sólo el efecto del precio, que es lo que cubre el futuro."),
+        nodos.hipotesis
+      ]));
+      return;
+    }
     contenedor.appendChild(el("p", { "class": "rh-intro" },
       "La hipótesis era que cubrirse con futuros baja el riesgo más del 50 %. Acá ves qué pasó con los datos de 2020/21 a 2025/26."));
     nodos.hipotesis = el("div", { id: "rh-hipotesis-resultados" });
@@ -850,7 +868,7 @@
   }
 
   // Gráfico de barras con la línea de la hipótesis y su leyenda en texto (los colores solos no alcanzan).
-  function pintarGrafico(grafico) {
+  function pintarGrafico(grafico, sinTabla) {
     var a = base();
     var el = a.el;
     if (!grafico) return el("p", { "class": "ayuda" }, AVISO_SIN_GRAFICO);
@@ -863,7 +881,7 @@
     return el("figure", { "class": "rh-grafico" }, [
       a.encabezadoDeGrafico(grafico.titulo, "reducción del riesgo, en porcentaje"),
       svg,
-      el("figcaption", null, [el("ul", { "class": "leyenda" }, items), el("p", { "class": "ayuda" }, "Los valores exactos están en la tabla de abajo.")])
+      el("figcaption", null, sinTabla ? [el("ul", { "class": "leyenda" }, items)] : [el("ul", { "class": "leyenda" }, items), el("p", { "class": "ayuda" }, "Los valores exactos están en la tabla de abajo.")])
     ]);
   }
 
@@ -871,6 +889,21 @@
     var a = base();
     var el = a.el;
     a.vaciar(nodos.hipotesis);
+    if (resumido()) {
+      nodos.hipotesis.appendChild(el("p", { "class": "rh-conclusion" }, nodosDeFrase(h.conclusionSimple)));
+      nodos.hipotesis.appendChild(pintarGrafico(h.grafico));
+      nodos.hipotesis.appendChild(pintarTablaTesis(h));
+      var corto = h.complementario;
+      var partes = [el("h4", null, "Si además cambia el rinde")];
+      if (corto.texto.length) {
+        // La misma frase del análisis con rinde real, sin la aclaración sobre la hipótesis.
+        var frase = corto.texto.slice(0, -1).concat(["), porque el futuro cubre el precio, no las toneladas que se cosechan."]);
+        partes.push(el("p", { "class": "rh-explicacion" }, nodosDeFrase(frase)));
+      }
+      partes.push(pintarGrafico(corto.grafico, true));
+      nodos.hipotesis.appendChild(el("div", { "class": "rh-complementario", id: "rh-complementario" }, partes));
+      return;
+    }
     nodos.hipotesis.appendChild(el("p", { "class": "rh-conclusion" }, nodosDeFrase(h.conclusion)));
     nodos.hipotesis.appendChild(pintarGrafico(h.grafico));
     nodos.hipotesis.appendChild(el("p", { "class": "rh-explicacion" }, h.explicacionFijo));
@@ -1072,12 +1105,14 @@
     if (!pintado.estaticos) {
       pintado.hipotesis = armarHipotesis(datos);
       pintarHipotesis(pintado.hipotesis);
+      if (resumido()) { pintado.estaticos = true; return; }
       var zonas = armarZonas(datos, filtroCultivo);
       pintarZonas(zonas);
       pintarBalance(zonas.balance);
       pintarSorpresa(armarSorpresa(datos));
       pintado.estaticos = true;
     }
+    if (resumido()) return;
     sincronizarDeslizador(e.h);
     pintarCobertura(armarCobertura(datos, e.h, pintado.hipotesis));
   }
@@ -1103,13 +1138,14 @@
     pintado = { datos: null, estaticos: false };
     if (!nodos) return;
     base().vaciar(nodos.hipotesis);
+    if (resumido()) return;
     base().vaciar(nodos.zonas);
     base().vaciar(nodos.balance);
     base().vaciar(nodos.sorpresa);
     base().vaciar(nodos.cobertura);
   }
 
-  var seccion = { id: "riesgo", titulo: "Riesgo e hipótesis", grupo: "historico", montar: montar, actualizar: actualizar, limpiar: limpiar };
+  var seccion = { id: "riesgo", titulo: resumido() ? "Cuánto baja el riesgo" : "Riesgo e hipótesis", grupo: "historico", montar: montar, actualizar: actualizar, limpiar: limpiar };
 
   var api = {
     armarVista: armarVista,
